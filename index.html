@@ -1,0 +1,3458 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1a21">
+  <meta name="description" content="ProtoViz: dual-panel application and transport-layer protocol visualizer for Assignment 2.">
+  <title>ProtoViz | Assignment 2 Transport-Layer Visualizer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f1a21'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h16' stroke='%2356c2ff' stroke-width='2' stroke-linecap='round' opacity='.35'/%3E%3Ccircle cx='11' cy='10' r='2.5' fill='%23b39dff'/%3E%3Ccircle cx='21' cy='16' r='2.5' fill='%2356c2ff'/%3E%3Ccircle cx='13' cy='22' r='2.5' fill='%2352e0a3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+/* ProtoViz
+   Design idea: the interface itself is monochrome so that colour can carry one
+   meaning only: which protocol a message belongs to.
+   Themes: light tokens on :root, dark tokens under the system preference and
+   under [data-theme="dark"]; [data-theme="light"] wins over the system. */
+
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+  --ink: #eaf0f3;
+  --surface: #ffffff;
+  --raised: #f2f6f8;
+  --sunken: #f6f9fa;
+  --line: #d2dee5;
+  --line-soft: rgba(16, 32, 42, 0.08);
+  --text: #10202a;
+  --muted: #526a76;
+  --faint: #7f95a0;
+  --focus: #0b7fc7;
+  --danger: #d33a3a;
+  --ok: #0c8f5c;
+  --dns: #6c4fe0;   --dns-soft: rgba(108, 79, 224, 0.11);
+  --http: #0b7fc7;  --http-soft: rgba(11, 127, 199, 0.11);
+  --smtp: #0c8f5c;  --smtp-soft: rgba(12, 143, 92, 0.11);
+  --tls: #a86a00;   --tls-soft: rgba(168, 106, 0, 0.12);
+  --tcp: #5d7480;   --tcp-soft: rgba(93, 116, 128, 0.12);
+  --udp: #c06b18;   --udp-soft: rgba(192, 107, 24, 0.12);
+  --err-soft: rgba(211, 58, 58, 0.11);
+  --ok-soft: rgba(12, 143, 92, 0.11);
+  --btn-bg: #10202a;
+  --btn-fg: #f4f8fa;
+  --shadow: 0 18px 40px -30px rgba(16, 32, 42, 0.35);
+
+  --sans: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r-panel: 20px;
+  --r-card: 12px;
+  --r-ctl: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --ink: #0f1a21;
+  --surface: #15232c;
+  --raised: #1c2f3a;
+  --sunken: #0c161c;
+  --line: #2b4250;
+  --line-soft: rgba(146, 169, 180, 0.14);
+  --text: #e9f0f2;
+  --muted: #92a9b4;
+  --faint: #667f8b;
+  --focus: #56c2ff;
+  --danger: #ff7d7d;
+  --ok: #52e0a3;
+  --dns: #b39dff;   --dns-soft: rgba(179, 157, 255, 0.16);
+  --http: #56c2ff;  --http-soft: rgba(86, 194, 255, 0.15);
+  --smtp: #52e0a3;  --smtp-soft: rgba(82, 224, 163, 0.15);
+  --tls: #ffbf47;   --tls-soft: rgba(255, 191, 71, 0.15);
+  --tcp: #8ea6b3;   --tcp-soft: rgba(142, 166, 179, 0.16);
+  --udp: #ffb45c;   --udp-soft: rgba(255, 180, 92, 0.15);
+  --err-soft: rgba(255, 125, 125, 0.16);
+  --ok-soft: rgba(82, 224, 163, 0.15);
+  --btn-bg: #e9f0f2;
+  --btn-fg: #0f1a21;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 40px -24px rgba(0, 0, 0, 0.7);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #0f1a21;
+  --surface: #15232c;
+  --raised: #1c2f3a;
+  --sunken: #0c161c;
+  --line: #2b4250;
+  --line-soft: rgba(146, 169, 180, 0.14);
+  --text: #e9f0f2;
+  --muted: #92a9b4;
+  --faint: #667f8b;
+  --focus: #56c2ff;
+  --danger: #ff7d7d;
+  --ok: #52e0a3;
+  --dns: #b39dff;   --dns-soft: rgba(179, 157, 255, 0.16);
+  --http: #56c2ff;  --http-soft: rgba(86, 194, 255, 0.15);
+  --smtp: #52e0a3;  --smtp-soft: rgba(82, 224, 163, 0.15);
+  --tls: #ffbf47;   --tls-soft: rgba(255, 191, 71, 0.15);
+  --tcp: #8ea6b3;   --tcp-soft: rgba(142, 166, 179, 0.16);
+  --err-soft: rgba(255, 125, 125, 0.16);
+  --ok-soft: rgba(82, 224, 163, 0.15);
+  --btn-bg: #e9f0f2;
+  --btn-fg: #0f1a21;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 40px -24px rgba(0, 0, 0, 0.7);
+}
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--text);
+  font: 400 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+svg { display: block; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Protocol colour scopes: anything inside picks up --pc / --pc-soft */
+.p-dns  { --pc: var(--dns);  --pc-soft: var(--dns-soft); }
+.p-http { --pc: var(--http); --pc-soft: var(--http-soft); }
+.p-smtp { --pc: var(--smtp); --pc-soft: var(--smtp-soft); }
+.p-tls  { --pc: var(--tls);  --pc-soft: var(--tls-soft); }
+.p-tcp  { --pc: var(--tcp);  --pc-soft: var(--tcp-soft); }
+
+/* ------------------------------------------------------------ app frame */
+.app { min-height: 100%; display: flex; flex-direction: column; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px max(18px, env(safe-area-inset-right)) 12px max(18px, env(safe-area-inset-left));
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark { width: 34px; height: 34px; flex: none; }
+.brand h1 { margin: 0; font-size: 18px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.3; }
+.topbar-actions { display: flex; gap: 8px; flex: none; }
+
+.layout {
+  flex: 1; display: grid; gap: 16px; align-items: start;
+  padding: 4px max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 16px 18px 0; }
+.panel-head h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.005em; }
+.panel-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+@media (min-width: 1024px) {
+  .app { height: 100%; }
+  .layout { grid-template-columns: minmax(360px, 36fr) minmax(0, 64fr); grid-template-rows: minmax(0, 1fr); min-height: 0; align-items: stretch; }
+  .panel { min-height: 0; overflow: hidden; }
+  .panel-activity .panel-body { overflow-y: auto; flex: 1; }
+  .only-stacked { display: none !important; }
+}
+
+/* -------------------------------------------------------------- controls */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 16px; border-radius: var(--r-ctl);
+  border: 1px solid var(--line); background: var(--raised); color: var(--text);
+  font-weight: 600; font-size: 15px; white-space: nowrap;
+  transition: background-color .15s, border-color .15s, transform .05s;
+}
+.btn:hover { border-color: var(--faint); }
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--btn-bg); color: var(--btn-fg); border-color: transparent; }
+.btn-primary:hover { border-color: transparent; filter: brightness(1.08); }
+.btn-quiet { background: transparent; }
+.btn-sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.btn svg { width: 18px; height: 18px; }
+.btn.is-busy { position: relative; color: transparent; }
+.btn.is-busy::after {
+  content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--btn-fg); border-right-color: transparent; animation: spin .7s linear infinite;
+}
+.btn-primary:not(.is-busy)::after { content: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.icon-btn {
+  width: 44px; height: 44px; flex: none; display: inline-grid; place-items: center;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--raised); color: var(--text);
+}
+.icon-btn:hover { border-color: var(--faint); }
+.icon-btn[disabled] { opacity: .4; cursor: not-allowed; }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.primary { background: var(--btn-bg); color: var(--btn-fg); border-color: transparent; width: 52px; height: 52px; }
+.icon-btn.primary svg { width: 22px; height: 22px; }
+.icon-btn.plain { border-color: transparent; background: transparent; width: 40px; height: 40px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.input, .select, .textarea {
+  width: 100%; min-height: 44px; padding: 10px 12px; font-size: 16px;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-ctl);
+}
+.input::placeholder, .textarea::placeholder { color: var(--faint); }
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--http-soft); }
+.textarea { resize: vertical; min-height: 92px; line-height: 1.45; }
+.select { appearance: none; padding-right: 34px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.input-row { display: flex; gap: 8px; }
+.input-row .input { flex: 1; min-width: 0; }
+.field.has-error .input, .field.has-error .textarea { border-color: var(--danger); }
+.field-error { color: var(--danger); font-size: 13px; min-height: 0; }
+.field-error:empty { display: none; }
+
+.tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 14px 18px 0; padding: 4px;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 14px;
+}
+.tab {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-weight: 600; font-size: 14px;
+}
+.tab svg { width: 18px; height: 18px; flex: none; }
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { background: var(--raised); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+@media (max-width: 380px) { .tab span:last-child { display: none; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--line); background: transparent; color: var(--muted);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px; min-height: 32px;
+}
+.chip:hover { color: var(--text); border-color: var(--faint); }
+
+.options { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--sunken); }
+.options summary { list-style: none; cursor: pointer; padding: 11px 14px; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.options summary::-webkit-details-marker { display: none; }
+.options summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; margin-right: 4px; }
+.options[open] summary::after { transform: rotate(-135deg); }
+.options-body { padding: 2px 14px 14px; display: flex; flex-direction: column; gap: 14px; }
+.opt { display: flex; flex-direction: column; gap: 6px; }
+.opt > span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.seg { display: flex; padding: 3px; gap: 3px; background: var(--raised); border: 1px solid var(--line); border-radius: 10px; }
+.seg button { flex: 1; min-height: 36px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-fg); }
+.check { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; }
+.check input { width: 20px; height: 20px; accent-color: var(--http); flex: none; }
+.link { background: none; border: 0; padding: 4px 6px; color: var(--http); text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }
+
+/* --------------------------------------------------------- status + logs */
+.status {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--sunken);
+}
+:where(.status) { --pc: var(--faint); --pc-soft: transparent; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 0 4px var(--pc-soft); }
+.status.is-live .status-dot { animation: pulse 1.2s ease-in-out infinite; }
+.status.is-error { --pc: var(--danger); --pc-soft: var(--err-soft); }
+.status.is-done { --pc: var(--ok); --pc-soft: var(--ok-soft); }
+.status-text { min-width: 0; display: flex; flex-direction: column; }
+.status-text strong { font-size: 14px; font-weight: 650; }
+.status-text span { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-step { font: 500 12px var(--mono); color: var(--muted); }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px transparent; } }
+
+.log summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); padding: 6px 0; min-height: 32px; }
+.log-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 210px; overflow: auto; border-top: 1px solid var(--line-soft); }
+.log-list li { display: grid; grid-template-columns: 62px 44px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; align-items: baseline; }
+.log-t { font: 500 12px var(--mono); color: var(--faint); }
+.log-p { font-weight: 700; font-size: 12px; color: var(--pc); }
+.log-empty { color: var(--faint); font-size: 13px; padding: 8px 0; display: block !important; }
+
+/* --------------------------------------------------- browser / mail views */
+.view-card { border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; background: var(--sunken); }
+.browser-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--raised); min-width: 0; }
+.browser-bar svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+.browser-url { font: 500 13px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-body { padding: 18px 16px; min-height: 132px; display: flex; flex-direction: column; gap: 8px; }
+.browser-body h3 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -0.01em; }
+.browser-body p { margin: 0; color: var(--muted); }
+.skeleton { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--raised) 25%, var(--line) 50%, var(--raised) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.placeholder { color: var(--faint); font-size: 14px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.tag { font: 500 12px var(--mono); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
+.tag.is-ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.tag.is-err { color: var(--danger); border-color: var(--danger); background: var(--err-soft); }
+.tag.is-wait { opacity: .55; }
+
+.mail-card { padding: 14px 16px; display: grid; gap: 10px; }
+.mail-lines { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+.mail-lines dt { color: var(--muted); }
+.mail-lines dd { margin: 0; overflow-wrap: anywhere; }
+.stamp { align-self: start; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--faint); color: var(--muted); }
+.stamp.is-ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.stamp.is-err { color: var(--danger); border-color: var(--danger); background: var(--err-soft); }
+.stamp.is-live { color: var(--smtp); border-color: var(--smtp); }
+
+/* ------------------------------------------------------------ video view */
+.video { border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; background: var(--sunken); }
+.video-screen { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #0a1116; }
+/* A broadcast test card: fitting for a streaming demo, and it needs no video file. */
+.testcard { position: absolute; inset: 0; display: grid; grid-template-rows: 62% 8% 30%; opacity: .92; }
+.testcard i { display: block; }
+.testcard .bars { background: linear-gradient(90deg, #c9cdd1 0 14.28%, #c8c73a 0 28.56%, #2fc4c4 0 42.84%, #35c65f 0 57.12%, #c23fc2 0 71.4%, #c0413f 0 85.68%, #3f47c4 0); }
+.testcard .mid { background: linear-gradient(90deg, #3f47c4 0 14.28%, #111 0 28.56%, #c23fc2 0 42.84%, #111 0 57.12%, #2fc4c4 0 71.4%, #111 0 85.68%, #c9cdd1 0); }
+.testcard .low { background: linear-gradient(90deg, #163a5b 0 20%, #f2f2f2 0 40%, #3a1f6b 0 60%, #111 0 100%); }
+.video-screen.is-paused .testcard, .video-screen.is-idle .testcard { filter: grayscale(.85) brightness(.55); }
+.video-screen.is-buffering .testcard { filter: grayscale(.6) brightness(.45); }
+.video-scan { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, .8); box-shadow: 0 0 14px rgba(255, 255, 255, .6); left: 0; display: none; }
+.video-screen.is-playing .video-scan { display: block; animation: sweep 4s linear infinite; }
+@keyframes sweep { from { left: 0; } to { left: 100%; } }
+.video-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, .7); padding: 10px; }
+.video-overlay strong { font-size: clamp(15px, 3.6vw, 20px); font-weight: 700; background: rgba(8, 14, 18, .72); padding: 4px 12px; border-radius: 8px; text-shadow: none; }
+.video-overlay span { font-size: 13px; background: rgba(8, 14, 18, .72); padding: 2px 10px; border-radius: 6px; text-shadow: none; }
+.video-badge { position: absolute; top: 10px; right: 10px; font: 600 12px var(--mono); padding: 3px 8px; border-radius: 6px; background: rgba(8, 14, 18, .8); color: #fff; }
+.video-bar { padding: 12px 14px; display: grid; gap: 8px; }
+.video-progress { position: relative; height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+.video-progress .buffer { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--http-soft); background-color: rgba(86, 194, 255, .3); transition: width .3s; }
+.video-progress .played { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--http); }
+.video-meta { display: flex; justify-content: space-between; font: 500 12px var(--mono); color: var(--muted); }
+.stream-controls { display: grid; grid-template-columns: 1fr minmax(120px, 160px); gap: 10px; align-items: end; }
+
+/* -------------------------------------------------------- viz panel head */
+.viz-tools { display: flex; align-items: center; gap: 12px; }
+.switch span:last-child { white-space: nowrap; }
+.switch { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .track { width: 34px; height: 20px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); position: relative; flex: none; transition: background-color .15s; }
+.switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background-color .15s; }
+.switch input:checked + .track { background: var(--tls-soft); border-color: var(--tls); }
+.switch input:checked + .track::after { transform: translateX(14px); background: var(--tls); }
+.switch input:focus-visible + .track { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* Assignment 2: explicit synchronized Application / Transport views */
+  .view-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin: 12px 18px 0;
+    padding: 4px;
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .view-tab {
+    min-height: 40px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 650;
+  }
+  .view-tab[aria-selected="true"] {
+    background: var(--raised);
+    color: var(--text);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .transport-field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .transport-field {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--sunken);
+  }
+  .transport-field span {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .transport-field strong {
+    display: block;
+    margin-top: 2px;
+    font: 600 12px var(--mono);
+    overflow-wrap: anywhere;
+  }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 18px 0; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 3px; background: var(--pc); }
+.stats { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 18px 0; min-height: 38px; }
+.stat { font: 500 12px var(--mono); padding: 3px 9px; border-radius: 6px; background: var(--sunken); border: 1px solid var(--line); color: var(--muted); }
+.stat b { color: var(--text); font-weight: 600; }
+
+.viz-empty { padding: 34px 24px 40px; display: grid; justify-items: center; gap: 14px; text-align: center; color: var(--muted); flex: 1; align-content: center; }
+.viz-empty svg { width: min(320px, 80%); height: auto; }
+.viz-empty h3 { margin: 0; color: var(--text); font-size: 17px; font-weight: 650; }
+.viz-empty p { margin: 0; max-width: 40ch; }
+
+/* ------------------------------------------------------ sequence diagram */
+.seq-wrap {
+  position: relative; scroll-behavior: smooth; margin: 12px 18px 0; border: 1px solid var(--line); border-radius: var(--r-card);
+  background: var(--sunken); overflow-y: auto; overscroll-behavior: contain; flex: 1.25 1 0; min-height: 190px;
+}
+.seq-lanes { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(var(--n), 1fr); background: var(--sunken); border-bottom: 1px solid var(--line); }
+.lane-head { padding: 9px 6px 8px; text-align: center; min-width: 0; }
+.lane-head b { display: block; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lane-head span { display: block; font: 500 11px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lane-head span.is-unknown { color: var(--faint); }
+.lane-head span.is-new { animation: reveal-ip .8s ease-out; }
+@keyframes reveal-ip { 0% { color: var(--dns); text-shadow: 0 0 10px var(--dns); } 100% { color: var(--muted); text-shadow: none; } }
+
+.seq-body { position: relative; min-height: 120px; }
+.lane-line { position: absolute; top: 0; bottom: 0; left: calc(var(--x) * 100%); border-left: 1px dashed var(--line); pointer-events: none; }
+.seq-row { position: relative; height: 62px; border-bottom: 1px solid var(--line-soft); cursor: pointer; opacity: .78; transition: opacity .15s, background-color .15s; }
+.seq-row:hover { opacity: 1; }
+.seq-row:focus-visible { outline-offset: -2px; }
+.seq-row.is-current { opacity: 1; background: var(--pc-soft); }
+.seq-row.is-transport { height: 50px; }
+.seq-label { position: absolute; left: calc(var(--mid) * 100%); top: 5px; transform: translateX(-50%); width: max-content; max-width: max(calc(var(--w) * 100% + 28px), 108px); text-align: center; z-index: 1; }
+.seq-text { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; line-height: 18px; min-width: 0; }
+.seq-text em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seq-num { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--pc-soft); color: var(--pc); font: 600 11px/18px var(--mono); }
+.seq-meta { font: 500 11px/15px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seq-meta span + span { margin-left: 10px; }
+.seq-row.is-transport .seq-text { font-weight: 500; color: var(--muted); }
+.seq-row.is-transport.is-current .seq-text { color: var(--text); }
+
+.seq-arrow { position: absolute; bottom: 11px; left: calc(var(--l) * 100%); width: calc(var(--w) * 100%); height: 2px; color: var(--pc); }
+.seq-line { position: absolute; inset: 0; background: var(--pc); border-radius: 1px; transform-origin: left center; }
+.seq-arrow.s2c .seq-line { transform-origin: right center; }
+.seq-arrow.is-transport .seq-line { background: none; border-top: 2px dashed var(--pc); height: 0; }
+.seq-head { position: absolute; top: -5px; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.seq-arrow.c2s .seq-head { right: -1px; border-left: 10px solid var(--pc); }
+.seq-arrow.s2c .seq-head { left: -1px; border-right: 10px solid var(--pc); }
+.seq-packet { position: absolute; top: -4px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 0 4px var(--pc-soft), 0 0 14px var(--pc); opacity: 0; }
+.seq-row.is-new .seq-line { animation: draw .42s ease-out both; }
+.seq-row.is-new .seq-head { animation: pop .2s ease-out .32s both; }
+.seq-row.is-new .seq-packet { animation: travel-r .55s ease-in-out both; }
+.seq-row.is-new .s2c .seq-packet { animation-name: travel-l; }
+.seq-row.is-new .seq-label { animation: fade .3s ease-out both; }
+@keyframes draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes pop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes travel-r { 0% { left: 0; opacity: 1; } 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+@keyframes travel-l { 0% { left: 100%; opacity: 1; } 85% { opacity: 1; } 100% { left: 0; opacity: 0; } }
+
+.seq-note { position: absolute; left: calc(var(--x) * 100%); top: 8px; transform: translateX(-50%); max-width: 86%; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border-radius: 999px; border: 1px dashed var(--pc); background: var(--sunken); font-size: 12.5px; font-weight: 600; z-index: 1; }
+.seq-note em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seq-row.is-internal { height: 46px; }
+.seq-row.is-internal.is-new .seq-note { animation: fade .35s ease-out both; }
+
+/* ---------------------------------------------------------------- inspector */
+.inspector { margin: 12px 18px 0; flex: 1 1 0; min-height: 150px; overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 2px; }
+.insp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.insp-title { margin: 0; font-size: 16px; font-weight: 650; overflow-wrap: anywhere; }
+.insp-step { font: 500 12px var(--mono); color: var(--muted); white-space: nowrap; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.badge { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--pc-soft); color: var(--pc); }
+.badge.plain { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+.raw {
+  margin: 0; padding: 12px 14px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-card);
+  font: 400 13px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2;
+  border-left: 3px solid var(--pc);
+}
+.raw.is-new { animation: unroll .45s ease-out both; }
+@keyframes unroll { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+mark.hl { background: var(--pc-soft); color: inherit; border-radius: 3px; padding: 0 2px; box-shadow: inset 0 -2px 0 var(--pc); }
+mark.hl-val { background: transparent; box-shadow: inset 0 -2px 0 var(--pc); }
+mark.hl-ok { --pc: var(--ok); --pc-soft: var(--ok-soft); }
+mark.hl-err { --pc: var(--danger); --pc-soft: var(--err-soft); }
+.fields { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.fields li { display: grid; grid-template-columns: minmax(0, auto) 1fr; gap: 6px 12px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.fields mark { font: 500 12px var(--mono); max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+.fields h4 { margin: 14px 0 0; font-size: 13px; font-weight: 650; color: var(--muted); }
+.note { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-card); background: var(--raised); font-size: 13.5px; color: var(--text); }
+
+/* ---------------------------------------------------------------- playbar */
+.playbar { margin-top: 12px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); border-radius: 0 0 var(--r-panel) var(--r-panel); display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.scrub { flex: 1 1 100%; display: flex; align-items: center; gap: 12px; order: 1; }
+.scrub input[type="range"] { flex: 1; min-width: 0; accent-color: var(--text); height: 28px; background: transparent; }
+.step-count { font: 500 12px var(--mono); color: var(--muted); min-width: 52px; text-align: right; }
+.controls { display: flex; align-items: center; gap: 10px; order: 2; margin: 0 auto; }
+.speed { min-width: 54px; height: 36px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font: 600 13px var(--mono); }
+.speed:hover { color: var(--text); border-color: var(--faint); }
+.kbd-hint { display: none; font-size: 12px; color: var(--faint); order: 3; }
+@media (min-width: 1024px) { .kbd-hint { display: block; } }
+@media (min-width: 720px) {
+  .playbar { flex-wrap: nowrap; }
+  .scrub { flex: 1 1 auto; order: 2; }
+  .controls { order: 1; margin: 0; }
+  .kbd-hint { order: 3; }
+}
+
+/* ------------------------------------------------------------------ stacked */
+@media (max-width: 1023.98px) {
+  .seq-wrap { flex: none; max-height: min(42vh, 380px); }
+  .inspector { flex: none; overflow: visible; }
+  .playbar { position: sticky; bottom: 0; z-index: 5; margin-top: 14px; box-shadow: 0 -12px 24px -18px rgba(0, 0, 0, .6); }
+  /* Tall enough that scrolling its top into view always works, even before it has content. */
+  #viz-panel { scroll-margin-top: 8px; min-height: calc(100vh - 24px); min-height: calc(100dvh - 24px); }
+}
+@media (max-width: 520px) {
+  .layout { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); gap: 12px; }
+  .topbar { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .panel-head, .legend, .stats { padding-left: 14px; padding-right: 14px; }
+  .panel-body { padding-left: 14px; padding-right: 14px; }
+  .tabs { margin-left: 14px; margin-right: 14px; }
+  .seq-wrap, .inspector { margin-left: 14px; margin-right: 14px; }
+  .playbar { padding-left: 14px; padding-right: 14px; }
+  .brand p { display: none; }
+  .stats { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .stat { flex: none; white-space: nowrap; }
+  .stream-controls { grid-template-columns: 1fr; }
+  .transport-field-grid { grid-template-columns: 1fr; }
+  .view-tabs { margin-left: 14px; margin-right: 14px; }
+}
+
+/* -------------------------------------------------------------------- toast */
+.toast-host { position: fixed; left: 0; right: 0; bottom: calc(84px + env(safe-area-inset-bottom)); display: grid; justify-items: center; gap: 8px; pointer-events: none; z-index: 20; padding: 0 16px; }
+.toast { pointer-events: auto; max-width: 440px; padding: 10px 14px; border-radius: 12px; background: var(--btn-bg); color: var(--btn-fg); font-size: 14px; font-weight: 550; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); animation: fade .2s ease-out both; }
+.toast.is-error { background: var(--danger); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .video-screen.is-playing .video-scan { display: none; }
+}
+
+.form-stack { display: grid; gap: 14px; }
+.gap-top { margin-top: 14px; }
+.log.gap-top { margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) { .seq-wrap { scroll-behavior: auto; } }
+
+  </style>
+  <script>
+    // Apply the saved (or system) theme before first paint to avoid a flash.
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem("pv-theme"); } catch (e) {}
+      if (!theme) theme = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" data-icon="logo"></span>
+        <div>
+          <h1>ProtoViz</h1>
+          <p>Application messages and the transport-layer delivery underneath.</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn plain" id="theme-toggle" type="button" aria-label="Switch colour theme"></button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- ============================ LEFT: ACTIVITY ============================ -->
+      <section class="panel panel-activity" id="activity-panel" aria-labelledby="activity-title">
+        <div class="panel-head"><h2 id="activity-title">Activity</h2></div>
+
+        <div class="tabs" role="tablist" aria-label="Choose an activity">
+          <button class="tab" role="tab" id="tab-browse" data-tab="browse" aria-selected="true" aria-controls="pane-browse"><span data-icon="globe"></span><span>Browse</span></button>
+          <button class="tab" role="tab" id="tab-mail" data-tab="mail" aria-selected="false" aria-controls="pane-mail" tabindex="-1"><span data-icon="mail"></span><span>Mail</span></button>
+          <button class="tab" role="tab" id="tab-stream" data-tab="stream" aria-selected="false" aria-controls="pane-stream" tabindex="-1"><span data-icon="film"></span><span>Stream</span></button>
+        </div>
+
+        <div class="panel-body">
+          <!-- ------------------------------ Browse ------------------------------ -->
+          <div role="tabpanel" id="pane-browse" aria-labelledby="tab-browse" class="pane" data-pane="browse">
+            <form id="browse-form" novalidate class="form-stack">
+              <div class="field" id="browse-field">
+                <label class="field-label" for="browse-url">Web address</label>
+                <div class="input-row">
+                  <input class="input" id="browse-url" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" value="https://example.com" placeholder="example.com" aria-describedby="browse-error">
+                  <button class="btn btn-primary" id="browse-go" type="submit">Visit</button>
+                </div>
+                <div class="field-error" id="browse-error" role="alert"></div>
+              </div>
+              <div class="chips" aria-label="Examples to try">
+                <button class="chip" type="button" data-url="https://example.com/index.html">HTTPS page</button>
+                <button class="chip" type="button" data-url="http://example.com/news?id=7">Plain HTTP</button>
+                <button class="chip" type="button" data-url="nxdomain.example.com">Unknown site</button>
+              </div>
+              <details class="options">
+                <summary>Options</summary>
+                <div class="options-body">
+                  <div class="opt">
+                    <span>Connection</span>
+                    <div class="seg" data-seg="browse-conn">
+                      <button type="button" data-value="persistent" aria-pressed="true">Persistent</button>
+                      <button type="button" data-value="non-persistent" aria-pressed="false">Non-persistent</button>
+                    </div>
+                  </div>
+                  <div class="opt">
+                    <span>Server answer</span>
+                    <div class="seg" data-seg="browse-scenario">
+                      <button type="button" data-value="ok" aria-pressed="true">200 OK</button>
+                      <button type="button" data-value="redirect" aria-pressed="false">301 Redirect</button>
+                      <button type="button" data-value="notfound" aria-pressed="false">404</button>
+                    </div>
+                  </div>
+                  <label class="check"><input type="checkbox" id="browse-resources"> Also load page files (CSS, JS, image)</label>
+                  <div class="check">
+                    <input type="checkbox" id="browse-cache">
+                    <label for="browse-cache">Use the DNS cache</label>
+                    <button type="button" class="link" id="dns-flush">Clear cache</button>
+                  </div>
+                </div>
+              </details>
+            </form>
+
+            <div class="status gap-top" id="browse-status" aria-live="polite">
+              <span class="status-dot"></span>
+              <div class="status-text"><strong>Ready</strong><span>Press Visit to load a page.</span></div>
+              <span class="status-step"></span>
+            </div>
+
+            <div class="view-card gap-top">
+              <div class="browser-bar"><span data-icon="lock"></span><span class="browser-url" id="browse-view-url">about:blank</span></div>
+              <div class="browser-body" id="browse-view-body"></div>
+            </div>
+
+            <details class="log gap-top" open>
+              <summary>Activity log</summary>
+              <ol class="log-list" id="browse-log"></ol>
+            </details>
+          </div>
+
+          <!-- -------------------------------- Mail -------------------------------- -->
+          <div role="tabpanel" id="pane-mail" aria-labelledby="tab-mail" class="pane" data-pane="mail" hidden>
+            <form id="mail-form" novalidate class="form-stack">
+              <div class="field">
+                <label class="field-label" for="mail-from">From</label>
+                <input class="input" id="mail-from" type="email" inputmode="email" autocapitalize="off" spellcheck="false" value="student@protoviz.local" autocomplete="off">
+              </div>
+              <div class="field">
+                <label class="field-label" for="mail-to">To</label>
+                <input class="input" id="mail-to" type="text" inputmode="email" autocapitalize="off" spellcheck="false" value="friend@example.com" placeholder="friend@example.com" autocomplete="off" aria-describedby="mail-error">
+              </div>
+              <div class="field">
+                <label class="field-label" for="mail-subject">Subject</label>
+                <input class="input" id="mail-subject" type="text" value="Hello from ProtoViz" maxlength="200">
+              </div>
+              <div class="field">
+                <label class="field-label" for="mail-body">Message</label>
+                <textarea class="textarea" id="mail-body" maxlength="5000">Hi!
+This email is travelling over SMTP.</textarea>
+              </div>
+              <div class="field-error" id="mail-error" role="alert"></div>
+              <details class="options">
+                <summary>Options</summary>
+                <div class="options-body">
+                  <label class="check"><input type="checkbox" id="mail-starttls"> Encrypt with STARTTLS</label>
+                  <div class="opt">
+                    <span>Mail server behaviour</span>
+                    <div class="seg" data-seg="mail-mode">
+                      <button type="button" data-value="accept" aria-pressed="true">Accepts mail</button>
+                      <button type="button" data-value="reject_rcpt" aria-pressed="false">Rejects recipient</button>
+                    </div>
+                  </div>
+                </div>
+              </details>
+              <button class="btn btn-primary" id="mail-go" type="submit">Send email</button>
+            </form>
+
+            <div class="status gap-top" id="mail-status" aria-live="polite">
+              <span class="status-dot"></span>
+              <div class="status-text"><strong>Ready</strong><span>Write a message and press Send.</span></div>
+              <span class="status-step"></span>
+            </div>
+
+            <div class="view-card gap-top" id="mail-view"></div>
+
+            <details class="log gap-top" open>
+              <summary>Activity log</summary>
+              <ol class="log-list" id="mail-log"></ol>
+            </details>
+          </div>
+
+          <!-- ------------------------------- Stream ------------------------------- -->
+          <div role="tabpanel" id="pane-stream" aria-labelledby="tab-stream" class="pane" data-pane="stream" hidden>
+            <div class="video" id="video">
+              <div class="video-screen is-idle" id="video-screen">
+                <div class="testcard" aria-hidden="true"><i class="bars"></i><i class="mid"></i><i class="low"></i></div>
+                <div class="video-scan" aria-hidden="true"></div>
+                <div class="video-badge" id="video-quality">no signal</div>
+                <div class="video-overlay"><strong id="video-title">Demo video</strong><span id="video-status">Press Play to start</span></div>
+              </div>
+              <div class="video-bar">
+                <div class="video-progress" aria-hidden="true"><div class="buffer" id="video-buffer"></div><div class="played" id="video-played"></div></div>
+                <div class="video-meta"><span id="video-time">0:00 / 0:48</span><span id="video-buffer-text">buffer 0 s</span></div>
+              </div>
+            </div>
+
+            <div class="stream-controls gap-top">
+              <button class="btn btn-primary" id="stream-play" type="button"><span data-icon="play"></span><span id="stream-play-label">Play</span></button>
+              <div class="field">
+                <label class="field-label" for="stream-quality">Quality</label>
+                <select class="select" id="stream-quality">
+                  <option value="auto">Auto</option>
+                  <option value="360p">360p</option>
+                  <option value="480p">480p</option>
+                  <option value="720p">720p</option>
+                  <option value="1080p">1080p</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="status gap-top" id="stream-status" aria-live="polite">
+              <span class="status-dot"></span>
+              <div class="status-text"><strong>Ready</strong><span>Press Play to request the video.</span></div>
+              <span class="status-step"></span>
+            </div>
+
+            <details class="log gap-top" open>
+              <summary>Activity log</summary>
+              <ol class="log-list" id="stream-log"></ol>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================== RIGHT: PROTOCOL VISUALIZER ======================== -->
+      <section class="panel panel-viz" id="viz-panel" aria-labelledby="viz-title">
+        <div class="panel-head">
+          <h2 id="viz-title">Protocol visualizer</h2>
+          <div class="viz-tools">
+            <button class="btn btn-quiet btn-sm only-stacked" id="jump-activity" type="button"><span data-icon="up"></span>Activity</button>
+          </div>
+        </div>
+
+        <div class="view-tabs" role="tablist" aria-label="Protocol visualization view">
+          <button class="view-tab" id="view-app" role="tab" aria-selected="true" type="button">Application Layer</button>
+          <button class="view-tab" id="view-transport" role="tab" aria-selected="false" type="button">Transport Layer</button>
+        </div>
+
+        <div class="legend" aria-label="Colour key">
+          <span class="p-dns"><i></i>DNS</span>
+          <span class="p-http"><i></i>HTTP</span>
+          <span class="p-smtp"><i></i>SMTP</span>
+          <span class="p-tcp"><i></i>TCP</span>
+          <span class="p-udp"><i></i>UDP</span>
+          <span class="p-tls"><i></i>TLS</span>
+        </div>
+        <div class="stats" id="viz-stats" aria-label="Totals so far"></div>
+
+        <div class="viz-empty" id="viz-empty">
+          <svg viewBox="0 0 320 150" fill="none" aria-hidden="true">
+            <g stroke="currentColor" stroke-opacity=".28" stroke-dasharray="4 5"><path d="M50 30v110M160 30v110M270 30v110"/></g>
+            <g font-family="Figtree, sans-serif" font-size="12" font-weight="600" fill="currentColor" text-anchor="middle" fill-opacity=".8">
+              <text x="50" y="16">You</text><text x="160" y="16">DNS</text><text x="270" y="16">Server</text>
+            </g>
+            <path d="M50 52h104" stroke="#b39dff" stroke-width="2"/><path d="m154 52-8-5v10z" fill="#b39dff"/>
+            <path d="M154 78H56" stroke="#b39dff" stroke-width="2"/><path d="m56 78 8-5v10z" fill="#b39dff"/>
+            <path d="M50 104h214" stroke="#56c2ff" stroke-width="2"/><path d="m264 104-8-5v10z" fill="#56c2ff"/>
+            <path d="M264 128H56" stroke="#56c2ff" stroke-width="2"/><path d="m56 128 8-5v10z" fill="#56c2ff"/>
+          </svg>
+          <h3>Nothing on the wire yet</h3>
+          <p>Choose an activity on the left and press Visit, Send email or Play. Every message it causes appears here, one step at a time.</p>
+        </div>
+
+        <div class="seq-wrap" id="seq-wrap" hidden>
+          <div class="seq-lanes" id="seq-lanes"></div>
+          <div class="seq-body" id="seq-body"></div>
+        </div>
+
+        <div class="inspector" id="inspector" hidden>
+          <div class="insp-top"><h3 class="insp-title" id="insp-title"></h3><span class="insp-step" id="insp-step"></span></div>
+          <div class="badges" id="insp-badges"></div>
+          <pre class="raw" id="insp-raw" tabindex="0"></pre>
+          <ul class="fields" id="insp-fields"></ul>
+          <p class="note" id="insp-note" hidden></p>
+        </div>
+
+        <div class="playbar" id="playbar">
+          <div class="controls">
+            <button class="icon-btn" id="btn-replay" type="button" aria-label="Replay from the start" data-icon="replay"></button>
+            <button class="icon-btn" id="btn-prev" type="button" aria-label="Previous step" data-icon="prev"></button>
+            <button class="icon-btn primary" id="btn-play" type="button" aria-label="Play"></button>
+            <button class="icon-btn" id="btn-next" type="button" aria-label="Next step" data-icon="next"></button>
+            <button class="speed" id="btn-speed" type="button" aria-label="Playback speed">1x</button>
+          </div>
+          <div class="scrub">
+            <input type="range" id="scrub" min="0" max="0" value="0" step="1" aria-label="Step position" disabled>
+            <span class="step-count" id="step-count">0 / 0</span>
+          </div>
+          <span class="kbd-hint">Space plays, arrow keys step</span>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast-host" id="toasts" aria-live="polite"></div>
+  <script>
+(() => {
+  // src/js/icons.js
+  var stroke = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+  var solid = (body) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${body}</svg>`;
+  var ICONS = {
+    globe: stroke('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>'),
+    mail: stroke('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.6 7.5 8.4 6 8.4-6"/>'),
+    film: stroke('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10.2 9.6 4.6 2.4-4.6 2.4z" fill="currentColor"/>'),
+    lock: stroke('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+    play: solid('<path d="M8 5.5v13L19 12z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'),
+    pause: solid('<rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/>'),
+    prev: stroke('<path d="M6.5 5v14"/><path d="M19 6.5v11L9.500 12z" fill="currentColor"/>'),
+    next: stroke('<path d="M17.5 5v14"/><path d="M5 6.500v11L14.500 12z" fill="currentColor"/>'),
+    replay: stroke('<path d="M4.500 12a7.500 7.500 0 1 0 2.400-5.500"/><path d="M4.500 4.500v4h4"/>'),
+    sun: stroke('<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.600 5.600 7 7M17 17l1.400 1.400M5.600 18.400 7 17M17 7l1.400-1.400"/>'),
+    moon: stroke('<path d="M20 14.500A8.500 8.500 0 0 1 9.500 4 8.500 8.500 0 1 0 20 14.500z"/>'),
+    up: stroke('<path d="m6 14 6-6 6 6"/>'),
+    logo: `<svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--raised)" stroke="var(--line)"/><g stroke="var(--line)" stroke-width="1.5" stroke-dasharray="2 3"><path d="M10 8v18M17 8v18M24 8v18"/></g><path d="M10 12h6" stroke="var(--dns)" stroke-width="2" stroke-linecap="round"/><path d="M17 17h6" stroke="var(--http)" stroke-width="2" stroke-linecap="round"/><path d="M10 22h13" stroke="var(--smtp)" stroke-width="2" stroke-linecap="round"/><circle cx="16.500" cy="12" r="2" fill="var(--dns)"/><circle cx="23.500" cy="17" r="2" fill="var(--http)"/><circle cx="23.500" cy="22" r="2" fill="var(--smtp)"/></svg>`
+  };
+  function icon(name) {
+    return ICONS[name] || "";
+  }
+  function hydrateIcons(root = document) {
+    root.querySelectorAll("[data-icon]").forEach((node) => {
+      node.innerHTML = icon(node.dataset.icon);
+    });
+  }
+
+  // src/js/player.js
+  var Player = class {
+    constructor({ stepDelay = 1100 } = {}) {
+      this.all = [];
+      this.vis = [];
+      this.pos = -1;
+      this.playing = false;
+      this.speed = 1;
+      this.stepDelay = stepDelay;
+      this.filter = () => true;
+      this.timer = null;
+      this.listeners = {};
+      this.meta = null;
+    }
+    // ---- tiny event emitter ---------------------------------------------
+    on(name, fn) {
+      var _a;
+      ((_a = this.listeners)[name] || (_a[name] = [])).push(fn);
+      return () => this.listeners[name] = this.listeners[name].filter((f) => f !== fn);
+    }
+    emit(name, payload) {
+      (this.listeners[name] || []).slice().forEach((fn) => fn(payload));
+    }
+    // ---- read access ------------------------------------------------------
+    get length() {
+      return this.vis.length;
+    }
+    get atEnd() {
+      return this.length > 0 && this.pos >= this.length - 1;
+    }
+    get event() {
+      return this.pos >= 0 ? this.all[this.vis[this.pos]] : null;
+    }
+    eventAt(p) {
+      return this.all[this.vis[p]];
+    }
+    /** Index into `all` of the current event (-1 before the start). */
+    get allIndex() {
+      return this.pos >= 0 ? this.vis[this.pos] : -1;
+    }
+    reindex() {
+      this.vis = [];
+      this.all.forEach((e, i) => {
+        if (this.filter(e)) this.vis.push(i);
+      });
+    }
+    // ---- loading ----------------------------------------------------------
+    load(events, { autoplay = true, meta = null } = {}) {
+      this.stop();
+      this.meta = meta;
+      this.all = events.slice();
+      this.reindex();
+      this.pos = -1;
+      this.emit("load");
+      this.emit("state");
+      if (autoplay) this.play();
+    }
+    append(events) {
+      const before = this.vis.length;
+      this.all.push(...events);
+      this.reindex();
+      this.emit("append", { added: this.vis.length - before });
+      this.checkNearEnd();
+    }
+    setFilter(fn) {
+      const current = this.allIndex;
+      this.filter = fn;
+      this.reindex();
+      let p = -1;
+      for (let i = 0; i < this.vis.length; i++) if (this.vis[i] <= current) p = i;
+      this.pos = p;
+      this.emit("reindex");
+    }
+    // ---- playback ---------------------------------------------------------
+    delayFor() {
+      return this.stepDelay / this.speed;
+    }
+    play({ restart = true } = {}) {
+      if (!this.length) return;
+      if (this.atEnd) {
+        if (!restart) return;
+        this.pos = -1;
+        this.emit("change", { pos: -1, event: null, jump: true });
+      }
+      this.playing = true;
+      this.emit("state");
+      this.schedule(this.pos === -1 ? this.stepDelay * 0.16 / this.speed : this.delayFor());
+    }
+    schedule(ms) {
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.tick(), ms);
+    }
+    tick() {
+      this.timer = null;
+      if (!this.playing) return;
+      if (this.pos + 1 >= this.length) {
+        this.pause();
+        this.emit("end");
+        return;
+      }
+      this.setPos(this.pos + 1, false);
+      if (this.pos + 1 >= this.length) {
+        this.playing = false;
+        this.emit("state");
+        this.emit("end");
+      } else {
+        this.schedule(this.delayFor());
+      }
+    }
+    setPos(p, jump) {
+      this.pos = Math.max(-1, Math.min(p, this.length - 1));
+      this.emit("change", { pos: this.pos, event: this.event, jump });
+      this.checkNearEnd();
+    }
+    checkNearEnd() {
+      if (this.length && this.length - 1 - this.pos <= 1) this.emit("nearEnd");
+    }
+    pause() {
+      clearTimeout(this.timer);
+      this.timer = null;
+      if (this.playing) {
+        this.playing = false;
+        this.emit("state");
+      }
+    }
+    stop() {
+      this.pause();
+    }
+    toggle() {
+      this.playing ? this.pause() : this.play();
+    }
+    next() {
+      this.pause();
+      if (this.pos < this.length - 1) this.setPos(this.pos + 1, false);
+    }
+    prev() {
+      this.pause();
+      if (this.pos >= 0) this.setPos(this.pos - 1, true);
+    }
+    goTo(p) {
+      this.pause();
+      this.setPos(p, true);
+    }
+    replay() {
+      this.pause();
+      this.pos = -1;
+      this.emit("change", { pos: -1, event: null, jump: true });
+      this.play();
+    }
+    setSpeed(s) {
+      this.speed = s;
+      this.emit("state");
+      if (this.playing) this.schedule(this.delayFor());
+    }
+  };
+
+  // src/js/core.js
+  var CLIENT_IP = "192.168.1.23";
+  var RESOLVER_IP = "8.8.8.8";
+  var ONE_WAY_DELAY_MS = { dns: 14, web: 36, mail: 42, cdn: 22 };
+  var UserError = class extends Error {
+  };
+  function hash32(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function makeRng(seed) {
+    let a = hash32(String(seed));
+    const next = () => {
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    return {
+      next,
+      uniform: (lo, hi) => lo + (hi - lo) * next(),
+      int: (lo, hi) => Math.floor(lo + (hi - lo + 1) * next()),
+      hex: (n) => Array.from({ length: n }, () => Math.floor(next() * 16).toString(16)).join("")
+    };
+  }
+  function simIp(name) {
+    const h = hash32(name.toLowerCase());
+    const prefix = ["192.0.2", "198.51.100", "203.0.113"][h % 3];
+    return `${prefix}.${1 + (h >>> 8) % 253}`;
+  }
+  function byteLength(text) {
+    return new TextEncoder().encode(text).length;
+  }
+  function hl(raw, text, label, kind = "key", opts = {}) {
+    if (!text) return null;
+    let start2;
+    if (opts.last) {
+      start2 = raw.lastIndexOf(text);
+    } else {
+      const origin = opts.after ? raw.indexOf(opts.after) : 0;
+      if (origin < 0) return null;
+      start2 = origin - 1;
+      for (let i = 0; i <= (opts.nth || 0); i++) {
+        start2 = raw.indexOf(text, start2 + 1);
+        if (start2 < 0) return null;
+      }
+    }
+    if (start2 < 0) return null;
+    return { text, label, kind, start: start2, end: start2 + text.length };
+  }
+  function mark(text, start2, label, kind = "key") {
+    return { text, label, kind, start: start2, end: start2 + text.length };
+  }
+  var Trace = class {
+    constructor(actors2, seed, t0 = 0) {
+      this.actors = actors2;
+      this.events = [];
+      this.t = t0;
+      this.rng = makeRng(seed);
+      this.delay = Object.fromEntries(actors2.map((a) => [a.id, ONE_WAY_DELAY_MS[a.id] ?? 30]));
+      // Assignment 2: keep TCP connection state so every data segment has
+      // consistent Seq/Ack values across the complete application flow.
+      this.tcpSessions = new Map();
+    }
+    jitter(base, spread = 0.12) {
+      return base * (1 + this.rng.uniform(-spread, spread));
+    }
+    /** Advance the clock (server processing time, transfer time...). */
+    wait(ms) {
+      this.t += ms;
+    }
+    /**
+     * Record one event.
+     * direction: "c2s" (client to server), "s2c" (server to client) or
+     * "internal" (something inside one machine, no packet).
+     * layer: "app" or "transport" (TCP/TLS, hideable in the UI).
+     */
+    emit(e) {
+      const direction = e.direction;
+      const to = direction === "internal" ? e.from : e.to;
+      const server = direction === "c2s" ? to : e.from;
+      const event = {
+        step: this.events.length + 1,
+        t_ms: Math.round(this.t * 10) / 10,
+        kind: e.kind,
+        protocol: e.protocol,
+        layer: e.layer || "app",
+        direction,
+        from: e.from,
+        to,
+        summary: e.summary,
+        raw: e.raw || "",
+        highlights: (e.highlights || []).filter(Boolean),
+        transport: e.transport || "",
+        note: e.note || "",
+        phase: e.phase || "",
+        log: e.log || "",
+        tag: e.tag || "",
+        ui: e.ui || {}
+      };
+      this.events.push(event);
+      const advance = e.advance !== void 0 ? e.advance : direction === "internal" ? 1 : this.jitter(this.delay[server] ?? 30);
+      this.t += advance;
+      return event;
+    }
+    toObject(kind, title, intro, meta = {}) {
+      return { kind, title, intro, actors: this.actors, events: this.events, meta };
+    }
+  };
+
+  // src/js/net.js
+  var DNS_TTL = 300;
+  var dnsCache = /* @__PURE__ */ new Map();
+  var MX_TABLE = {
+    "gmail.com": ["gmail-smtp-in.l.google.com", 5],
+    "outlook.com": ["outlook-com.olc.protection.outlook.com", 10],
+    "yahoo.com": ["mta5.am0.yahoodns.net", 1]
+  };
+  function flushDnsCache() {
+    dnsCache.clear();
+  }
+  function isNxdomain(name) {
+    const n = name.toLowerCase();
+    return n.endsWith(".invalid") || n.startsWith("nxdomain") || n.includes("doesnotexist");
+  }
+  function newClientPort(tr) {
+    return tr.rng.int(49152, 65e3);
+  }
+  var hex4 = (n) => "0x" + n.toString(16).padStart(4, "0");
+  function dnsExchange(tr, name, qtype, answers, o = {}) {
+    const additional = o.additional || [];
+    const ttl = o.ttl ?? DNS_TTL;
+    const fqdn = name.replace(/\.$/, "").toLowerCase() + ".";
+    const txid = hex4(tr.rng.int(4096, 65534));
+    const dnsClientPort = tr.rng.int(49152, 65500);
+    const question = `${fqdn}    IN    ${qtype}`;
+    const query = `;; Transaction ID: ${txid}   (UDP to ${RESOLVER_IP}:53)
+;; Flags: QR=0 (query)  OPCODE=QUERY  RD=1 (recursion desired)
+;; QDCOUNT=1  ANCOUNT=0
+
+;; QUESTION SECTION:
+` + question;
+    udpDatagram(tr, {
+      direction: "c2s",
+      from: "client",
+      to: "dns",
+      sourcePort: dnsClientPort,
+      destinationPort: 53,
+      length: 8 + byteLength(query),
+      summary: "UDP DNS Query",
+      note: "DNS commonly uses UDP port 53 for a small query."
+    });
+    tr.emit({
+      kind: "dns_query",
+      protocol: "DNS",
+      direction: "c2s",
+      from: "client",
+      to: "dns",
+      summary: `${qtype}? ${name}`,
+      raw: query,
+      highlights: [
+        hl(query, txid, "Transaction ID: the reply must echo this number", "key"),
+        hl(query, "QR=0", "QR=0 means this message is a query", "val"),
+        hl(query, "RD=1", "Recursion Desired: asks the resolver to do the full lookup for us", "val"),
+        hl(query, fqdn, "QNAME: the domain name being looked up", "key", { after: ";; QUESTION" }),
+        hl(query, qtype, `QTYPE: the record type requested (${qtype})`, "key", { last: true })
+      ],
+      transport: "UDP/53",
+      phase: "Looking up the address",
+      log: `Asking ${RESOLVER_IP}: what is the ${qtype} record of ${name}?`,
+      note: o.queryNote || "A DNS query usually fits in one UDP datagram sent to port 53."
+    });
+    tr.wait(tr.rng.uniform(15, 45));
+    const rcode = o.nxdomain ? "NXDOMAIN" : "NOERROR";
+    const lines = [
+      `;; Transaction ID: ${txid}   (UDP from ${RESOLVER_IP}:53)`,
+      `;; Flags: QR=1 (response)  RD=1  RA=1 (recursion available)  RCODE=${rcode}`,
+      `;; QDCOUNT=1  ANCOUNT=${answers.length}  ARCOUNT=${additional.length}`,
+      "",
+      ";; QUESTION SECTION:",
+      question
+    ];
+    if (answers.length) lines.push("", ";; ANSWER SECTION:", ...answers);
+    if (additional.length) lines.push("", ";; ADDITIONAL SECTION:", ...additional);
+    const resp = lines.join("\n");
+    const highlights = [
+      hl(resp, txid, "Same Transaction ID as the query, so the client can match them", "key"),
+      hl(resp, "QR=1", "QR=1 means this message is a response", "val"),
+      hl(resp, `RCODE=${rcode}`, "Response code: NOERROR = success, NXDOMAIN = name does not exist", o.nxdomain ? "err" : "ok")
+    ];
+    if (answers.length) {
+      const lineStart = resp.indexOf(answers[0]);
+      const ttlAt = lineStart + answers[0].indexOf(`    ${ttl}    `) + 4;
+      const rdataAt = lineStart + answers[0].lastIndexOf(o.rdata);
+      highlights.push(
+        mark(String(ttl), ttlAt, "TTL: seconds the answer may be cached", "val"),
+        mark(o.rdata, rdataAt, o.rdataLabel, "ok")
+      );
+    }
+    udpDatagram(tr, {
+      direction: "s2c",
+      from: "dns",
+      to: "client",
+      sourcePort: 53,
+      destinationPort: dnsClientPort,
+      length: 8 + byteLength(resp),
+      summary: "UDP DNS Response",
+      note: "The resolver returns the DNS answer as a UDP datagram."
+    });
+    tr.emit({
+      kind: "dns_response",
+      protocol: "DNS",
+      direction: "s2c",
+      from: "dns",
+      to: "client",
+      summary: o.summaryResp || (o.nxdomain ? "NXDOMAIN" : `${name} resolved`),
+      raw: resp,
+      highlights,
+      transport: "UDP/53",
+      phase: o.nxdomain ? "Lookup failed" : "Address found",
+      log: o.logOk || (o.nxdomain ? `${name} does not exist (NXDOMAIN)` : `${name} resolved`),
+      note: o.respNote || (o.nxdomain ? "The resolver has no record for this name." : "Now the client knows which IP address to talk to."),
+      ui: o.reveal && !o.nxdomain ? { reveal: { [o.reveal]: o.revealIp } } : {}
+    });
+  }
+  function resolveA(tr, name, { reveal = "web", useCache = false } = {}) {
+    if (isNxdomain(name)) {
+      dnsExchange(tr, name, "A", [], { nxdomain: true, summaryResp: "NXDOMAIN (no such name)" });
+      return null;
+    }
+    const ip = simIp(name);
+    const key = `A:${name.toLowerCase()}`;
+    const now = Date.now();
+    if (useCache && (dnsCache.get(key) || 0) > now) {
+      const left = Math.floor((dnsCache.get(key) - now) / 1e3);
+      const raw = `${name}  A  ${ip}   (TTL left: ${left} s)
+No DNS packets were sent.`;
+      tr.emit({
+        kind: "dns_cache_hit",
+        protocol: "DNS",
+        direction: "internal",
+        from: "client",
+        summary: `Cache hit: ${name}`,
+        raw,
+        highlights: [hl(raw, "No DNS packets were sent.", "The answer came from the local cache", "ok")],
+        phase: "Address found in cache",
+        log: `${name} is in the DNS cache (${ip}); no query needed`,
+        note: "Cached answers skip the network entirely until their TTL runs out.",
+        ui: { reveal: { [reveal]: ip } }
+      });
+      return ip;
+    }
+    const fqdn = name.toLowerCase() + ".";
+    dnsExchange(tr, name, "A", [`${fqdn}    ${DNS_TTL}    IN    A    ${ip}`], {
+      rdata: ip,
+      rdataLabel: "A record: the server's IPv4 address",
+      reveal,
+      revealIp: ip,
+      summaryResp: `${name} is ${ip}`,
+      logOk: `${name} is ${ip} (cache for ${DNS_TTL} s)`
+    });
+    dnsCache.set(key, now + DNS_TTL * 1e3);
+    return ip;
+  }
+  function resolveMx(tr, domain, { reveal = "mail" } = {}) {
+    domain = domain.toLowerCase();
+    const [host, pref] = MX_TABLE[domain] || [`mail.${domain}`, 10];
+    const ip = simIp(host);
+    dnsExchange(tr, domain, "MX", [`${domain}.    3600    IN    MX    ${pref} ${host}.`], {
+      additional: [`${host}.    ${DNS_TTL}    IN    A     ${ip}`],
+      rdata: `${pref} ${host}.`,
+      rdataLabel: "MX record: preference number and the mail server responsible for this domain",
+      reveal,
+      revealIp: ip,
+      ttl: 3600,
+      summaryResp: `MX ${host}`,
+      queryNote: "Mail is not sent to the domain's web server. An MX query asks which host accepts mail for the domain.",
+      respNote: "The resolver also added the mail host's A record in the additional section, saving a second query.",
+      logOk: `Mail for ${domain} is handled by ${host} (${ip})`
+    });
+    return [host, ip];
+  }
+  function tcpKey(cport, sip, sport) {
+    return `${cport}|${sip}|${sport}`;
+  }
+
+  function tcpOpen(tr, server, cport, sip, sport) {
+    const flow = `${CLIENT_IP}:${cport} to ${sip}:${sport}`;
+    const back = `${sip}:${sport} to ${CLIENT_IP}:${cport}`;
+    const transport = `TCP/${sport}`;
+
+    // Deterministic initial sequence numbers make the simulation repeatable.
+    const clientISN = 1000 + (cport % 1000);
+    const serverISN = 5000 + (sport % 1000);
+
+    const session = {
+      key: tcpKey(cport, sip, sport),
+      server,
+      cport,
+      sip,
+      sport,
+      transport,
+      clientSeq: clientISN + 1,
+      serverSeq: serverISN + 1,
+      clientWin: 64240,
+      serverWin: 65535,
+      cwnd: 10
+    };
+
+    const syn = `${flow}
+[SYN]  Seq=${clientISN}  Ack=0  Win=${session.clientWin}  Flags=SYN  Length=0  MSS=1460`;
+    tr.emit({
+      kind: "tcp_syn",
+      protocol: "TCP",
+      direction: "c2s",
+      from: "client",
+      to: server,
+      summary: "SYN",
+      raw: syn,
+      highlights: [
+        hl(syn, "[SYN]", "SYN flag: client requests a TCP connection", "key"),
+        hl(syn, `Seq=${clientISN}`, "Initial client sequence number", "val"),
+        hl(syn, `Win=${session.clientWin}`, "Advertised receive window", "val"),
+        hl(syn, "Length=0", "Handshake carries no application data", "val")
+      ],
+      layer: "transport",
+      transport,
+      phase: "TCP connection: SYN-SENT",
+      log: `SYN sent to ${sip}:${sport}`,
+      note: "TCP starts with a three-way handshake. SYN consumes one sequence number."
+    });
+
+    const synack = `${back}
+[SYN, ACK]  Seq=${serverISN}  Ack=${clientISN + 1}  Win=${session.serverWin}  Flags=SYN, ACK  Length=0  MSS=1460`;
+    tr.emit({
+      kind: "tcp_synack",
+      protocol: "TCP",
+      direction: "s2c",
+      from: server,
+      to: "client",
+      summary: "SYN-ACK",
+      raw: synack,
+      highlights: [
+        hl(synack, "[SYN, ACK]", "Server synchronizes its sequence and acknowledges the client", "key"),
+        hl(synack, `Seq=${serverISN}`, "Initial server sequence number", "val"),
+        hl(synack, `Ack=${clientISN + 1}`, "Next client sequence number expected", "val"),
+        hl(synack, `Win=${session.serverWin}`, "Server advertised receive window", "val")
+      ],
+      layer: "transport",
+      transport,
+      phase: "TCP connection: SYN-RECEIVED",
+      log: `SYN-ACK returned with Ack=${clientISN + 1}`
+    });
+
+    const ack = `${flow}
+[ACK]  Seq=${clientISN + 1}  Ack=${serverISN + 1}  Win=${session.clientWin}  Flags=ACK  Length=0`;
+    tr.emit({
+      kind: "tcp_ack",
+      protocol: "TCP",
+      direction: "c2s",
+      from: "client",
+      to: server,
+      summary: "ACK",
+      raw: ack,
+      highlights: [
+        hl(ack, "[ACK]", "Third handshake message: connection becomes ESTABLISHED", "ok"),
+        hl(ack, `Seq=${clientISN + 1}`, "Client's next sequence number", "val"),
+        hl(ack, `Ack=${serverISN + 1}`, "Next server sequence number expected", "val"),
+        hl(ack, `Win=${session.clientWin}`, "Receive window / flow-control signal", "val")
+      ],
+      layer: "transport",
+      transport,
+      phase: "TCP connection: ESTABLISHED",
+      log: "TCP three-way handshake complete"
+    });
+
+    tr.tcpSessions.set(session.key, session);
+    return session;
+  }
+
+  function getTcpSession(tr, cport, sip, sport) {
+    return tr.tcpSessions.get(tcpKey(cport, sip, sport));
+  }
+
+  function tcpDataSegment(tr, session, direction, length, summary, extra = {}) {
+    if (!session || length <= 0) return;
+
+    const clientToServer = direction === "c2s";
+    const from = clientToServer ? "client" : session.server;
+    const to = clientToServer ? session.server : "client";
+    const seq = clientToServer ? session.clientSeq : session.serverSeq;
+    const ack = clientToServer ? session.serverSeq : session.clientSeq;
+    const win = clientToServer ? session.clientWin : session.serverWin;
+    const cwnd = session.cwnd;
+
+    const raw = `${clientToServer ? `${CLIENT_IP}:${session.cport} to ${session.sip}:${session.sport}` : `${session.sip}:${session.sport} to ${CLIENT_IP}:${session.cport}`}
+[PSH, ACK]  Seq=${seq}  Ack=${ack}  Win=${win}  Flags=PSH, ACK  Length=${length}  CWND=${cwnd} MSS=1460`;
+
+    tr.emit({
+      kind: "tcp_data",
+      protocol: "TCP",
+      direction,
+      from,
+      to,
+      summary: summary || "TCP data segment",
+      raw,
+      highlights: [
+        hl(raw, `Seq=${seq}`, "Sequence number: first byte carried by this segment", "key"),
+        hl(raw, `Ack=${ack}`, "Acknowledgement number: next byte expected from the peer", "key"),
+        hl(raw, `Win=${win}`, "Receive window advertised by the receiver", "val"),
+        hl(raw, "Flags=PSH, ACK", "PSH delivers buffered data; ACK confirms received bytes", "key"),
+        hl(raw, `Length=${length}`, "TCP payload length in bytes", "key"),
+        hl(raw, `CWND=${cwnd}`, "Simplified congestion-window illustration", "val")
+      ],
+      layer: "transport",
+      transport: session.transport,
+      phase: extra.phase || "TCP data transfer",
+      log: extra.log || `${summary || "TCP data"}: ${length} bytes`,
+      note: extra.note || "Sequence numbers advance by the payload length. The receive window provides flow control; CWND is shown as a simplified congestion-control signal."
+    });
+
+    if (clientToServer) session.clientSeq += length;
+    else session.serverSeq += length;
+    // Simplified congestion-control illustration for the teaching simulator.
+    session.cwnd = Math.min(32, session.cwnd + 1);
+  }
+
+  function tcpAck(tr, session, direction, summary = "TCP ACK") {
+    if (!session) return;
+    const clientToServer = direction === "c2s";
+    const from = clientToServer ? "client" : session.server;
+    const to = clientToServer ? session.server : "client";
+    const seq = clientToServer ? session.clientSeq : session.serverSeq;
+    const ack = clientToServer ? session.serverSeq : session.clientSeq;
+    const win = clientToServer ? session.clientWin : session.serverWin;
+
+    const raw = `${clientToServer ? `${CLIENT_IP}:${session.cport} to ${session.sip}:${session.sport}` : `${session.sip}:${session.sport} to ${CLIENT_IP}:${session.cport}`}
+[ACK]  Seq=${seq}  Ack=${ack}  Win=${win}  Flags=ACK  Length=0  CWND=${session.cwnd}`;
+
+    tr.emit({
+      kind: "tcp_ack_data",
+      protocol: "TCP",
+      direction,
+      from,
+      to,
+      summary,
+      raw,
+      highlights: [
+        hl(raw, "Flags=ACK", "ACK confirms receipt without carrying application data", "ok"),
+        hl(raw, `Ack=${ack}`, "Next byte expected from the peer", "key"),
+        hl(raw, `Win=${win}`, "Advertised receive window / flow control", "val"),
+        hl(raw, `CWND=${session.cwnd}`, "Simplified congestion-window value", "val")
+      ],
+      layer: "transport",
+      transport: session.transport,
+      phase: "TCP flow control",
+      log: `ACK ${ack}, window ${win}`
+    });
+  }
+
+  function tcpClose(tr, server, cport, sip, sport) {
+    const session = getTcpSession(tr, cport, sip, sport);
+    if (!session) return;
+
+    const flow = `${CLIENT_IP}:${cport} to ${sip}:${sport}`;
+    const back = `${sip}:${sport} to ${CLIENT_IP}:${cport}`;
+    const t = session.transport;
+
+    const serverFinSeq = session.serverSeq;
+    const fin1 = `${back}
+[FIN, ACK]  Seq=${serverFinSeq}  Ack=${session.clientSeq}  Win=${session.serverWin}  Flags=FIN, ACK  Length=0`;
+    tr.emit({
+      kind: "tcp_fin",
+      protocol: "TCP",
+      direction: "s2c",
+      from: server,
+      to: "client",
+      summary: "FIN, ACK",
+      raw: fin1,
+      highlights: [
+        hl(fin1, "Flags=FIN, ACK", "Server finished sending and requests a close", "key"),
+        hl(fin1, `Seq=${serverFinSeq}`, "Final server sequence number", "val"),
+        hl(fin1, `Ack=${session.clientSeq}`, "Acknowledges all client data", "key")
+      ],
+      layer: "transport",
+      transport: t,
+      phase: "TCP teardown: FIN-WAIT",
+      log: "Server sends FIN, ACK",
+      note: "A TCP connection is normally closed with a FIN/ACK exchange rather than simply disappearing."
+    });
+    session.serverSeq += 1;
+
+    const clientAck = `${flow}
+[ACK]  Seq=${session.clientSeq}  Ack=${session.serverSeq}  Win=${session.clientWin}  Flags=ACK  Length=0`;
+    tr.emit({
+      kind: "tcp_fin_ack",
+      protocol: "TCP",
+      direction: "c2s",
+      from: "client",
+      to: server,
+      summary: "ACK (server FIN)",
+      raw: clientAck,
+      highlights: [
+        hl(clientAck, "Flags=ACK", "Client acknowledges the server FIN", "ok"),
+        hl(clientAck, `Ack=${session.serverSeq}`, "FIN consumes one sequence number", "key")
+      ],
+      layer: "transport",
+      transport: t,
+      phase: "TCP teardown: ACK",
+      log: "Client acknowledges server FIN"
+    });
+
+    const clientFinSeq = session.clientSeq;
+    const fin2 = `${flow}
+[FIN, ACK]  Seq=${clientFinSeq}  Ack=${session.serverSeq}  Win=${session.clientWin}  Flags=FIN, ACK  Length=0`;
+    tr.emit({
+      kind: "tcp_fin",
+      protocol: "TCP",
+      direction: "c2s",
+      from: "client",
+      to: server,
+      summary: "FIN, ACK",
+      raw: fin2,
+      highlights: [
+        hl(fin2, "Flags=FIN, ACK", "Client closes its sending direction", "key"),
+        hl(fin2, `Seq=${clientFinSeq}`, "Client's final sequence number", "val"),
+        hl(fin2, `Ack=${session.serverSeq}`, "All server data has been received", "key")
+      ],
+      layer: "transport",
+      transport: t,
+      phase: "TCP teardown: FIN",
+      log: "Client sends FIN, ACK"
+    });
+    session.clientSeq += 1;
+
+    const finalAck = `${back}
+[ACK]  Seq=${session.serverSeq}  Ack=${session.clientSeq}  Win=${session.serverWin}  Flags=ACK  Length=0`;
+    tr.emit({
+      kind: "tcp_ack",
+      protocol: "TCP",
+      direction: "s2c",
+      from: server,
+      to: "client",
+      summary: "Final ACK",
+      raw: finalAck,
+      highlights: [
+        hl(finalAck, "Flags=ACK", "Server acknowledges the client FIN", "ok"),
+        hl(finalAck, `Ack=${session.clientSeq}`, "Both directions are now closed", "key")
+      ],
+      layer: "transport",
+      transport: t,
+      phase: "TCP connection: CLOSED",
+      log: "Final ACK — TCP connection closed"
+    });
+
+    tr.tcpSessions.delete(session.key);
+  }
+
+  function udpDatagram(tr, { direction, from, to, sourcePort = 53000, destinationPort = 53, length, summary, note = "" }) {
+    const raw = `${from === "client" ? CLIENT_IP : from} : ${sourcePort}  ->  ${to === "client" ? CLIENT_IP : to} : ${destinationPort}
+[UDP]  Length=${length}  Checksum=simulated  Flags=none  Connectionless`;
+
+    tr.emit({
+      kind: "udp_datagram",
+      protocol: "UDP",
+      direction,
+      from,
+      to,
+      summary,
+      raw,
+      highlights: [
+        hl(raw, "Length=", "UDP datagram length including UDP header", "key"),
+        hl(raw, "Checksum=simulated", "UDP checksum is represented symbolically in this simulator", "val"),
+        hl(raw, "Connectionless", "UDP does not perform a TCP-style handshake", "key")
+      ],
+      layer: "transport",
+      transport: `UDP/${destinationPort}`,
+      phase: "UDP datagram delivery",
+      log: `${summary} — ${length} bytes`,
+      note: note || "UDP sends independent datagrams without connection establishment, sequencing, or retransmission."
+    });
+  }
+
+  function tlsHandshake(tr, server, host, alpn = "http/1.1") {
+    let ch = `TLS 1.3  ClientHello
+  Server Name (SNI): ${host}
+  Supported versions: TLS 1.3, TLS 1.2
+  Cipher suites: TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384,
+                 TLS_CHACHA20_POLY1305_SHA256
+  Key share: x25519`;
+    if (alpn) ch += `
+  ALPN: ${alpn}`;
+    tr.emit({
+      kind: "tls_client_hello",
+      protocol: "TLS",
+      direction: "c2s",
+      from: "client",
+      to: server,
+      summary: "ClientHello",
+      raw: ch,
+      highlights: [
+        hl(ch, "ClientHello", "First handshake message: the client proposes how to encrypt", "key"),
+        hl(ch, `Server Name (SNI): ${host}`, "SNI: tells the server which site the client wants", "val"),
+        hl(ch, "Key share: x25519", "The client's half of the key exchange", "val")
+      ],
+      layer: "transport",
+      transport: "TLS 1.3",
+      phase: "Securing the connection (TLS)",
+      log: "Starting the TLS handshake",
+      note: "TLS runs between TCP and the application protocol. It adds encryption and proves the server's identity."
+    });
+    tr.wait(tr.rng.uniform(2, 6));
+    const sh = `TLS 1.3  ServerHello
+  Selected cipher: TLS_AES_128_GCM_SHA256
+  Key share: x25519
+{EncryptedExtensions}
+{Certificate}  CN=${host}  (issued by Example CA)
+{CertificateVerify}
+{Finished}`;
+    tr.emit({
+      kind: "tls_server_hello",
+      protocol: "TLS",
+      direction: "s2c",
+      from: server,
+      to: "client",
+      summary: "ServerHello + Certificate",
+      raw: sh,
+      highlights: [
+        hl(sh, "ServerHello", "The server picks the cipher and completes the key exchange", "key"),
+        hl(sh, `CN=${host}`, "Certificate subject: proves who the server is", "ok")
+      ],
+      layer: "transport",
+      transport: "TLS 1.3",
+      phase: "Securing the connection (TLS)"
+    });
+    const fin = "TLS 1.3  {Finished}\nHandshake complete: everything after this is encrypted.";
+    tr.emit({
+      kind: "tls_finished",
+      protocol: "TLS",
+      direction: "c2s",
+      from: "client",
+      to: server,
+      summary: "Finished",
+      raw: fin,
+      highlights: [hl(fin, "Handshake complete", "Encrypted application data can now flow", "ok")],
+      layer: "transport",
+      transport: "TLS 1.3",
+      phase: "Secure connection ready"
+    });
+  }
+
+  // src/js/http.js
+  var SERVER_TOKEN = "nginx/1.25.3";
+  var USER_AGENT = "ProtoViz/1.0 (educational browser)";
+  var HOST_RE = /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/;
+  var IPV4_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+  var LINK_MBPS = 20;
+  var CSS_BODY = "body { font-family: system-ui, sans-serif; margin: 2rem; }\nh1 { color: #234; }\n";
+  var JS_BODY = 'document.title += " (loaded)";\nconsole.log("app.js ready");\n';
+  var ASSETS = [
+    ["/assets/style.css", "text/css", "text/css,*/*;q=0.1", "css"],
+    ["/assets/app.js", "text/javascript", "*/*", "js"],
+    ["/assets/logo.png", "image/png", "image/avif,image/webp,image/png,*/*;q=0.8", "image"]
+  ];
+  var escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+  function httpDate() {
+    return (/* @__PURE__ */ new Date()).toUTCString();
+  }
+  function parseUrl(input) {
+    let raw = (input || "").trim();
+    if (!raw) throw new UserError("Enter a web address first, for example example.com.");
+    if (!raw.includes("://")) raw = "https://" + raw;
+    let u;
+    try {
+      u = new URL(raw);
+    } catch {
+      throw new UserError("That address is not a valid URL. Try something like https://example.com/page.");
+    }
+    const scheme = u.protocol.replace(":", "").toLowerCase();
+    if (scheme !== "http" && scheme !== "https") throw new UserError("Only http:// and https:// addresses are supported.");
+    const host = u.hostname.toLowerCase();
+    if (!host) throw new UserError("The address is missing a host name, for example example.com.");
+    if (host.startsWith("[")) throw new UserError("IPv6 addresses are not supported in this demo. Use a host name or an IPv4 address.");
+    const m = host.match(IPV4_RE);
+    const isIp = !!m && m.slice(1).every((o) => Number(o) <= 255);
+    if (!isIp && !HOST_RE.test(host)) throw new UserError(`'${host}' is not a valid host name.`);
+    const defaultPort = scheme === "https" ? 443 : 80;
+    const port = u.port ? Number(u.port) : defaultPort;
+    const target = (u.pathname || "/") + (u.search || "");
+    const hostHeader = port === defaultPort ? host : `${host}:${port}`;
+    return { scheme, host, port, target, isIp, hostHeader, url: `${scheme}://${hostHeader}${target}` };
+  }
+  function buildPage(host, target, withAssets) {
+    const heading = `Welcome to ${host}`;
+    const assets = withAssets ? '  <link rel="stylesheet" href="/assets/style.css">\n  <script src="/assets/app.js" defer><\/script>\n' : "";
+    const logo = withAssets ? '  <img src="/assets/logo.png" alt="logo" width="48" height="48">\n' : "";
+    const body = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(host)}</title>
+${assets}</head>
+<body>
+${logo}  <h1>${escapeHtml(heading)}</h1>
+  <p>A simulated page served for ${escapeHtml(target)}</p>
+</body>
+</html>
+`;
+    return [body, heading];
+  }
+  var notFoundPage = (host, target) => `<!DOCTYPE html>
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+  <h1>404 Not Found</h1>
+  <p>${escapeHtml(target)} does not exist on ${escapeHtml(host)}.</p>
+  <hr><small>${SERVER_TOKEN}</small>
+</body>
+</html>
+`;
+  var redirectPage = () => "<html>\n<head><title>301 Moved Permanently</title></head>\n<body><h1>301 Moved Permanently</h1></body>\n</html>\n";
+  var etag = (...parts) => `"${hash32(parts.join("|")).toString(16).padStart(8, "0")}"`;
+  var resourceSize = (path) => 1200 + hash32(path) % 256 * 8;
+  var HttpClient = class {
+    constructor(tr, host, ip, persistent) {
+      this.tr = tr;
+      this.host = host;
+      this.ip = ip;
+      this.persistent = persistent;
+      this.conn = null;
+    }
+    open(scheme, port) {
+      const cport = newClientPort(this.tr);
+      tcpOpen(this.tr, "web", cport, this.ip, port);
+      if (scheme === "https") tlsHandshake(this.tr, "web", this.host, "http/1.1");
+      this.conn = { scheme, port, cport };
+    }
+    close() {
+      tcpClose(this.tr, "web", this.conn.cport, this.ip, this.conn.port);
+      this.conn = null;
+    }
+    ensure(scheme, port) {
+      const c = this.conn;
+      if (c && c.scheme === scheme && c.port === port) return;
+      if (c) {
+        this.tr.emit({
+          kind: "note",
+          protocol: "HTTP",
+          direction: "internal",
+          from: "client",
+          summary: `Port ${c.port} connection left idle`,
+          raw: `The redirect points to port ${port}, so the old connection to port ${c.port} cannot be reused. The server will time it out on its own.`,
+          phase: "Switching connection",
+          note: "A connection is tied to one IP address and port. A new port means a new TCP (and TLS) handshake."
+        });
+        this.conn = null;
+      }
+      this.open(scheme, port);
+    }
+    /** One GET request and its response. */
+    get(o) {
+      const tr = this.tr;
+      this.ensure(o.scheme, o.port);
+      const token = this.persistent ? "keep-alive" : "close";
+      const secureNote = o.scheme === "https" ? "Encrypted on the wire by TLS. The visualizer shows the decrypted HTTP text so you can read it." : "Plain HTTP: anyone on the path could read this text.";
+      const carrier = `${o.scheme === "https" ? "TLS" : "TCP"}/${o.port}`;
+      const reqLines = [
+        `GET ${o.target} HTTP/1.1`,
+        `Host: ${o.hostHeader}`,
+        `User-Agent: ${USER_AGENT}`,
+        `Accept: ${o.accept || "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8"}`,
+        "Accept-Language: en-US,en;q=0.9",
+        "Accept-Encoding: identity"
+      ];
+      if (o.referer) reqLines.push(`Referer: ${o.referer}`);
+      reqLines.push(`Connection: ${token}`);
+      const req = reqLines.join("\n") + "\n";
+      const tcpSession = getTcpSession(tr, this.conn.cport, this.ip, this.conn.port);
+      tcpDataSegment(tr, tcpSession, "c2s", byteLength(req), `HTTP request segment: ${o.target}`, {
+        log: `TCP carries HTTP request (${byteLength(req)} bytes)`,
+        note: "The HTTP request is application data carried inside a reliable TCP byte stream."
+      });
+      tr.emit({
+        kind: "http_request",
+        protocol: "HTTP",
+        direction: "c2s",
+        from: "client",
+        to: "web",
+        summary: `GET ${o.target}`,
+        raw: req,
+        highlights: [
+          hl(req, "GET", "Method: GET asks the server to send a resource", "key"),
+          hl(req, o.target, "Request target: the path (and query) of the resource", "val"),
+          hl(req, "HTTP/1.1", "Protocol version", "val"),
+          hl(req, `Host: ${o.hostHeader}`, "Host header: required in HTTP/1.1 so one IP can serve many sites", "key"),
+          hl(req, `Connection: ${token}`, "keep-alive reuses this TCP connection; close ends it after the reply", "val")
+        ],
+        transport: carrier,
+        phase: "Sending the request",
+        log: `GET ${o.scheme}://${o.hostHeader}${o.target}`,
+        note: `${secureNote} The blank line after the headers marks the end of the request.`,
+        tag: o.tag || ""
+      });
+      tcpAck(tr, tcpSession, "s2c", "ACK (HTTP request)");
+      tr.wait(tr.rng.uniform(6, 22));
+      const size = o.body != null ? byteLength(o.body) : o.binarySize;
+      const head = [
+        `HTTP/1.1 ${o.status} ${o.reason}`,
+        `Date: ${httpDate()}`,
+        `Server: ${SERVER_TOKEN}`,
+        `Content-Type: ${o.ctype}`,
+        `Content-Length: ${size}`
+      ];
+      if (o.location) head.push(`Location: ${o.location}`);
+      if (o.status === 200) head.push("Cache-Control: max-age=3600", `ETag: ${etag(o.hostHeader, o.target, size)}`);
+      head.push(`Connection: ${token}`);
+      if (this.persistent) head.push("Keep-Alive: timeout=5, max=100");
+      const shown = o.body != null ? o.body : `[binary body: ${o.binarySize.toLocaleString("en-US")} bytes, not shown]`;
+      const resp = head.join("\n") + "\n\n" + shown;
+      const highlights = [
+        hl(
+          resp,
+          `${o.status} ${o.reason}`,
+          "Status line: the three-digit code says how the request went",
+          o.status < 300 ? "ok" : o.status < 400 ? "val" : "err"
+        ),
+        hl(resp, `Content-Type: ${o.ctype}`, "Tells the browser how to interpret the body", "val"),
+        hl(resp, `Content-Length: ${size}`, "Body size in bytes: lets the client know where the reply ends", "key"),
+        hl(resp, `Connection: ${token}`, "Repeats the connection decision", "val")
+      ];
+      if (o.location) highlights.push(hl(resp, `Location: ${o.location}`, "Where the browser should go next", "key"));
+      tcpDataSegment(tr, tcpSession, "s2c", size, `HTTP response segment: ${o.status} ${o.reason}`, {
+        log: `TCP carries HTTP response (${size} bytes)`,
+        note: "The HTTP response body is carried as TCP payload. Sequence numbers advance by the payload length."
+      });
+      tcpAck(tr, tcpSession, "c2s", "ACK (HTTP response)");
+      tr.emit({
+        kind: "http_response",
+        protocol: "HTTP",
+        direction: "s2c",
+        from: "web",
+        to: "client",
+        summary: `${o.status} ${o.reason}`,
+        raw: resp,
+        highlights,
+        transport: carrier,
+        phase: "Receiving the response",
+        log: `${o.status} ${o.reason} (${size.toLocaleString("en-US")} bytes, ${o.ctype.split(";")[0]})`,
+        note: o.label || "Status codes: 2xx success, 3xx redirect, 4xx client error, 5xx server error.",
+        ui: o.ui || {},
+        tag: o.tag || "",
+        advance: tr.jitter(tr.delay.web) + size * 8 / (LINK_MBPS * 1e3)
+      });
+      if (!this.persistent) this.close();
+    }
+    finish() {
+      if (!this.conn) return;
+      this.tr.emit({
+        kind: "note",
+        protocol: "HTTP",
+        direction: "internal",
+        from: "web",
+        summary: "Connection stays open",
+        raw: `Persistent connection (keep-alive) to port ${this.conn.port} stays open, so the next request skips the TCP and TLS handshakes. The server closes it after about 5 s of silence.`,
+        phase: "Connection kept open",
+        note: "HTTP/1.1 connections are persistent by default. Compare with the non-persistent option."
+      });
+    }
+  };
+  function buildBrowseTrace(url, { persistent = true, scenario = "ok", loadResources = false, useCache = false } = {}) {
+    const u = parseUrl(url);
+    const ip = u.isIp ? u.host : simIp(u.host);
+    const actors2 = [
+      { id: "client", label: "Browser", sub: CLIENT_IP },
+      { id: "dns", label: "DNS resolver", sub: RESOLVER_IP },
+      { id: "web", label: u.host, sub: ip, sub_hidden: !u.isIp }
+    ];
+    const tr = new Trace(actors2, `browse:${u.url}`);
+    const intro = `Visit ${u.url}`;
+    const title = `Browsing ${u.url}`;
+    if (u.isIp) {
+      tr.emit({
+        kind: "note",
+        protocol: "DNS",
+        direction: "internal",
+        from: "client",
+        summary: "No DNS lookup needed",
+        raw: `${u.host} is already an IP address, so the browser can connect directly.`,
+        phase: "Skipping DNS",
+        log: `${u.host} is an IP address; DNS skipped`
+      });
+    } else if (resolveA(tr, u.host, { useCache }) === null) {
+      const raw = `The DNS server answered NXDOMAIN for ${u.host}.
+The browser cannot connect without an IP address.`;
+      tr.emit({
+        kind: "note",
+        protocol: "HTTP",
+        direction: "internal",
+        from: "client",
+        summary: "Site can't be reached",
+        raw,
+        highlights: [hl(raw, "NXDOMAIN", "The name does not exist in DNS", "err")],
+        phase: "Failed",
+        log: `Could not find ${u.host}`,
+        ui: {
+          result: "error",
+          title: "This site can't be reached",
+          message: `${u.host} could not be found (DNS_PROBE_FINISHED_NXDOMAIN).`,
+          url: u.url
+        }
+      });
+      return tr.toObject("browse", title, intro, { host: u.host, ip: null });
+    }
+    const client = new HttpClient(tr, u.host, ip, persistent);
+    let { scheme, port, target } = u;
+    if (scenario === "redirect") {
+      let next, location, why;
+      if (u.scheme === "http") {
+        next = { scheme: "https", port: 443, target: u.target };
+        location = `https://${u.host}${u.target}`;
+        why = "The site wants every visit to use HTTPS, so it redirects http:// to https://.";
+      } else {
+        const newTarget = u.target !== "/home" ? "/home" : "/";
+        next = { scheme: u.scheme, port: u.port, target: newTarget };
+        location = `${u.scheme}://${u.hostHeader}${newTarget}`;
+        why = "The page has moved. The browser will now request the new location.";
+      }
+      client.get({
+        scheme,
+        port,
+        hostHeader: u.hostHeader,
+        target,
+        status: 301,
+        reason: "Moved Permanently",
+        ctype: "text/html",
+        body: redirectPage(),
+        location,
+        ui: { redirect: location },
+        label: why
+      });
+      ({ scheme, port, target } = next);
+    }
+    const finalHostHeader = port === (scheme === "https" ? 443 : 80) ? u.host : `${u.host}:${port}`;
+    const finalUrl = `${scheme}://${finalHostHeader}${target}`;
+    let status, reason, body, heading, text;
+    if (scenario === "notfound") {
+      [status, reason, body] = [404, "Not Found", notFoundPage(u.host, target)];
+      [heading, text] = ["404 Not Found", `${target} does not exist on ${u.host}.`];
+    } else {
+      [status, reason] = [200, "OK"];
+      [body, heading] = buildPage(u.host, target, loadResources);
+      text = `A simulated page served for ${target}`;
+    }
+    client.get({
+      scheme,
+      port,
+      hostHeader: finalHostHeader,
+      target,
+      status,
+      reason,
+      ctype: "text/html; charset=UTF-8",
+      body,
+      ui: { result: "page", status, reason, heading, text, url: finalUrl, title: u.host },
+      label: status === 200 ? "The body is the HTML the browser will render." : "404 means the server is fine but has nothing at this path."
+    });
+    if (loadResources && status === 200) {
+      for (const [path, ctype, accept, rtype] of ASSETS) {
+        if (rtype === "image") {
+          const size = resourceSize(path);
+          client.get({
+            scheme,
+            port,
+            hostHeader: finalHostHeader,
+            target: path,
+            status: 200,
+            reason: "OK",
+            ctype,
+            binarySize: size,
+            accept,
+            referer: finalUrl,
+            ui: { resource: { path, status: 200, type: rtype, bytes: size } },
+            tag: "asset",
+            label: "Images are binary, so the visualizer shows only their size."
+          });
+        } else {
+          const content = rtype === "css" ? CSS_BODY : JS_BODY;
+          client.get({
+            scheme,
+            port,
+            hostHeader: finalHostHeader,
+            target: path,
+            status: 200,
+            reason: "OK",
+            ctype: `${ctype}; charset=UTF-8`,
+            body: content,
+            accept,
+            referer: finalUrl,
+            ui: { resource: { path, status: 200, type: rtype, bytes: byteLength(content) } },
+            tag: "asset",
+            label: "The browser found this file in the HTML and requested it."
+          });
+        }
+      }
+    }
+    client.finish();
+    return tr.toObject("browse", title, intro, { host: u.host, ip, persistent, scenario });
+  }
+
+  // src/js/smtp.js
+  var EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+  var CLIENT_NAME = "client.protoviz.local";
+  var MAX_RECIPIENTS = 5;
+  var REPLY_MEANING = {
+    "220": "220: service ready",
+    "221": "221: closing the connection",
+    "250": "250: requested action completed",
+    "354": "354: go ahead and send the message",
+    "550": "550: mailbox unavailable, permanent failure"
+  };
+  var isAscii = (s) => /^[\x00-\x7f]*$/.test(s);
+  function encodeSubject(subject) {
+    if (isAscii(subject)) return subject;
+    const bytes = new TextEncoder().encode(subject);
+    let bin = "";
+    bytes.forEach((b) => bin += String.fromCharCode(b));
+    return `=?UTF-8?B?${btoa(bin)}?=`;
+  }
+  var mailDate = () => (/* @__PURE__ */ new Date()).toUTCString().replace("GMT", "+0000");
+  function messageText(sender, rcpts, subject, body, msgId) {
+    const lines = body.replace(/\r\n|\r/g, "\n").split("\n");
+    while (lines.length && lines[lines.length - 1] === "") lines.pop();
+    const stuffed = lines.some((l) => l.startsWith("."));
+    const safe = lines.map((l) => l.startsWith(".") ? "." + l : l);
+    const encoding = isAscii(body + subject) ? "7bit" : "8bit";
+    const headers = [
+      `From: <${sender}>`,
+      "To: " + rcpts.map((r) => `<${r}>`).join(", "),
+      `Subject: ${encodeSubject(subject)}`,
+      `Date: ${mailDate()}`,
+      `Message-ID: <${msgId}>`,
+      "MIME-Version: 1.0",
+      "Content-Type: text/plain; charset=UTF-8",
+      `Content-Transfer-Encoding: ${encoding}`
+    ];
+    return [[...headers, "", ...safe, "."].join("\n"), stuffed];
+  }
+  function validateMail(fromAddr, to, subject) {
+    const sender = (fromAddr || "").trim();
+    if (!EMAIL_RE.test(sender)) throw new UserError("The From address is not valid. Use the form name@domain.com.");
+    const rcpts = (to || "").split(/[,;]/).map((r) => r.trim()).filter(Boolean);
+    if (!rcpts.length) throw new UserError("Add at least one recipient in the To field.");
+    if (rcpts.length > MAX_RECIPIENTS) throw new UserError(`This demo sends to at most ${MAX_RECIPIENTS} recipients at once.`);
+    for (const r of rcpts) {
+      if (!EMAIL_RE.test(r)) throw new UserError(`'${r}' is not a valid email address. Use the form name@domain.com.`);
+    }
+    const domains = new Set(rcpts.map((r) => r.split("@").pop().toLowerCase()));
+    if (domains.size > 1) {
+      throw new UserError("Use recipients from one domain for this demo. Real mail servers open a separate SMTP session per domain.");
+    }
+    const cleanSubject = (subject || "").replace(/[\r\n]+/g, " ").trim();
+    return { sender, rcpts, domain: [...domains][0], subject: cleanSubject };
+  }
+  function buildMailTrace(fromAddr, to, subject, body, { starttls = false, serverMode = "accept" } = {}) {
+    const { sender, rcpts, domain, subject: subj } = validateMail(fromAddr, to, subject);
+    const senderDomain = sender.split("@").pop();
+    const actors2 = [
+      { id: "client", label: "Mail client", sub: CLIENT_IP },
+      { id: "dns", label: "DNS resolver", sub: RESOLVER_IP },
+      { id: "mail", label: `mail.${domain}`, sub: "?", sub_hidden: true }
+    ];
+    const tr = new Trace(actors2, `mail:${sender}:${rcpts.join(",")}:${subj}`);
+    const intro = `Send mail to ${rcpts.join(", ")}`;
+    const title = `Mail to ${rcpts.join(", ")}`;
+    const [mxHost, mxIp] = resolveMx(tr, domain);
+    actors2[2].label = mxHost;
+    actors2[2].sub = mxIp;
+    const port = 25;
+    const cport = newClientPort(tr);
+    tcpOpen(tr, "mail", cport, mxIp, port);
+    const mailTcp = getTcpSession(tr, cport, mxIp, port);
+    const state = { tls: false };
+    const carrier = () => `${state.tls ? "TLS" : "TCP"}/${port}`;
+    function reply(code, lines, summary, o = {}) {
+      const raw = lines.map((text2, i) => `${code}${i < lines.length - 1 ? "-" : " "}${text2}`).join("\n");
+      const marks2 = [hl(raw, code, REPLY_MEANING[code] || `${code}: reply code`, o.kind || "ok"), ...o.extra || []];
+      const replyBytes = byteLength(raw);
+      tcpDataSegment(tr, mailTcp, "s2c", replyBytes, `SMTP reply segment: ${summary}`, {
+        log: `TCP carries SMTP reply (${replyBytes} bytes)`
+      });
+      tcpAck(tr, mailTcp, "c2s", "ACK (SMTP reply)");
+      tr.emit({
+        kind: "smtp_reply",
+        protocol: "SMTP",
+        direction: "s2c",
+        from: "mail",
+        to: "client",
+        summary: `${code} ${summary}`,
+        raw,
+        highlights: marks2,
+        transport: carrier(),
+        phase: o.phase || "",
+        log: o.log || "",
+        note: o.note || "",
+        ui: o.ui
+      });
+      tr.wait(tr.rng.uniform(1, 6));
+    }
+    function command(text2, summary, extra, o = {}) {
+      const verb = o.verb || text2.split(" ")[0];
+      const marks2 = [hl(text2, verb, `${verb}: an SMTP command sent by the client`, "key"), ...extra];
+      const commandBytes = byteLength(text2);
+      tcpDataSegment(tr, mailTcp, "c2s", commandBytes, `SMTP command segment: ${summary}`, {
+        log: `TCP carries ${summary} (${commandBytes} bytes)`
+      });
+      tcpAck(tr, mailTcp, "s2c", `ACK (${summary})`);
+      tr.emit({
+        kind: "smtp_command",
+        protocol: "SMTP",
+        direction: "c2s",
+        from: "client",
+        to: "mail",
+        summary,
+        raw: text2,
+        highlights: marks2,
+        transport: carrier(),
+        phase: o.phase || "",
+        log: o.log || "",
+        note: o.note || ""
+      });
+      tr.wait(tr.rng.uniform(1, 5));
+    }
+    function ehlo(first) {
+      const cmd = `EHLO ${CLIENT_NAME}`;
+      command(cmd, "EHLO", [hl(cmd, CLIENT_NAME, "The client introduces itself by name", "val")], {
+        phase: "Introducing ourselves",
+        log: cmd,
+        note: first ? "EHLO starts an ESMTP session and asks the server to list its extensions." : "After STARTTLS the client must send EHLO again, because everything before it was unprotected."
+      });
+      const caps = [`${mxHost} Hello ${CLIENT_NAME} [${CLIENT_IP}]`, "PIPELINING", "SIZE 10240000"];
+      if (!state.tls) caps.push("STARTTLS");
+      caps.push("8BITMIME", "ENHANCEDSTATUSCODES");
+      const preview = caps.map((c, i) => `250${i < caps.length - 1 ? "-" : " "}${c}`).join("\n");
+      reply("250", caps, "capabilities", {
+        extra: state.tls ? [] : [hl(preview, "STARTTLS", "Extension: the server can upgrade this connection to TLS", "val")],
+        note: first ? "Lines starting with 250- continue the reply. The last line uses 250 followed by a space." : "",
+        phase: "Server capabilities",
+        log: "Server lists its capabilities"
+      });
+    }
+    reply("220", [`${mxHost} ESMTP Postfix`], "Service ready", {
+      phase: "Server greeting",
+      log: "Server says hello (220)",
+      note: "In SMTP the server speaks first. 2xx means success."
+    });
+    ehlo(true);
+    if (starttls) {
+      command("STARTTLS", "STARTTLS", [], {
+        phase: "Upgrading to TLS",
+        log: "Asking to switch to TLS",
+        note: "Opportunistic TLS: the same TCP connection is upgraded to an encrypted one."
+      });
+      reply("220", ["2.0.0 Ready to start TLS"], "Ready to start TLS", { phase: "Upgrading to TLS" });
+      tlsHandshake(tr, "mail", mxHost, null);
+      state.tls = true;
+      ehlo(false);
+    } else {
+      const plain = "The server offered STARTTLS, but this client did not use it.\nThe message will cross the network as readable text.";
+      tr.emit({
+        kind: "note",
+        protocol: "SMTP",
+        direction: "internal",
+        from: "client",
+        summary: "Sent without encryption",
+        raw: plain,
+        highlights: [hl(plain, "readable text", "Anyone on the path could read the message", "err")],
+        phase: "No encryption",
+        log: "Continuing without TLS",
+        note: "Turn on STARTTLS in the options to compare the two flows."
+      });
+    }
+    const mailFrom = `MAIL FROM:<${sender}>`;
+    command(mailFrom, "MAIL FROM", [hl(mailFrom, `<${sender}>`, "Envelope sender: where bounce messages go", "val")], {
+      verb: "MAIL FROM",
+      phase: "Sending the envelope",
+      log: mailFrom,
+      note: "The envelope (MAIL FROM, RCPT TO) is separate from the From and To headers inside the message."
+    });
+    reply("250", ["2.1.0 Ok"], "Sender ok", { phase: "Sending the envelope" });
+    const accepted = [];
+    const rejected = [];
+    rcpts.forEach((rcpt, index) => {
+      const cmd = `RCPT TO:<${rcpt}>`;
+      command(cmd, "RCPT TO", [hl(cmd, `<${rcpt}>`, "Envelope recipient", "val")], {
+        verb: "RCPT TO",
+        phase: "Sending the envelope",
+        log: cmd,
+        note: index === 0 ? "One RCPT TO line is sent per recipient." : ""
+      });
+      if (serverMode === "reject_rcpt" && index === 0) {
+        rejected.push(rcpt);
+        const text2 = `5.1.1 <${rcpt}>: Recipient address rejected: User unknown`;
+        reply("550", [text2], "Recipient rejected", {
+          kind: "err",
+          phase: "Recipient rejected",
+          log: `550: ${rcpt} rejected (user unknown)`,
+          ui: rcpts.length === 1 ? { result: "rejected", recipients: rcpts, code: "550 5.1.1", message: "Recipient address rejected: user unknown" } : void 0,
+          extra: [hl(`550 ${text2}`, "5.1.1", "Enhanced status code: bad destination mailbox", "err")],
+          note: "5xx is a permanent failure. The sender's server will give up and send a bounce."
+        });
+      } else {
+        accepted.push(rcpt);
+        reply("250", ["2.1.5 Ok"], "Recipient ok", { phase: "Sending the envelope" });
+      }
+    });
+    if (!accepted.length) {
+      command("QUIT", "QUIT", [], {
+        phase: "Closing the session",
+        log: "QUIT",
+        note: "With no valid recipient there is nothing to send, so the client ends the session."
+      });
+      reply("221", ["2.0.0 Bye"], "Bye", { phase: "Session closed", log: "Server says goodbye (221)" });
+      tcpClose(tr, "mail", cport, mxIp, port);
+      return tr.toObject("mail", title, intro, { mx: mxHost, ip: mxIp, starttls, accepted: [], rejected });
+    }
+    command("DATA", "DATA", [], { phase: "Sending the message", log: "DATA", note: "DATA tells the server that the message content follows." });
+    reply("354", ["End data with <CR><LF>.<CR><LF>"], "Start mail input", {
+      phase: "Sending the message",
+      extra: [hl("354 End data with <CR><LF>.<CR><LF>", "<CR><LF>.<CR><LF>", "The end-of-message marker", "key")]
+    });
+    const msgId = `${tr.rng.hex(16)}@${senderDomain}`;
+    const [text, stuffed] = messageText(sender, accepted, subj, body, msgId);
+    const marks = [
+      hl(text, `From: <${sender}>`, "Header shown to the reader (can differ from MAIL FROM)", "val"),
+      hl(text, `Subject: ${encodeSubject(subj)}`, "Subject header", "key"),
+      hl(text, "Message-ID:", "Unique id of this message", "val"),
+      hl(text, ".", "A line with only a dot ends the message", "key", { last: true })
+    ];
+    tcpDataSegment(tr, mailTcp, "c2s", byteLength(text), "SMTP message content segment", {
+      log: `TCP carries message body (${byteLength(text)} bytes)`,
+      note: "SMTP DATA content is carried as ordinary TCP stream bytes."
+    });
+    tcpAck(tr, mailTcp, "s2c", "ACK (message content)");
+    tr.emit({
+      kind: "smtp_command",
+      protocol: "SMTP",
+      direction: "c2s",
+      from: "client",
+      to: "mail",
+      summary: "Message content",
+      raw: text,
+      highlights: marks,
+      transport: carrier(),
+      phase: "Sending the message",
+      log: `Sending the message (${byteLength(text)} bytes)`,
+      note: "Everything up to the lone dot is the message: headers, a blank line, then the body." + (stuffed ? " Body lines that start with a dot were doubled (dot-stuffing) so they cannot end the message early." : "")
+    });
+    tr.wait(tr.rng.uniform(4, 12));
+    const queueId = tr.rng.hex(10).toUpperCase();
+    reply("250", [`2.0.0 Ok: queued as ${queueId}`], "Queued", {
+      phase: "Message accepted",
+      log: `Message accepted, queued as ${queueId}`,
+      extra: [hl(`250 2.0.0 Ok: queued as ${queueId}`, queueId, "The server's queue id for this message", "ok")],
+      ui: { result: rejected.length ? "partial" : "delivered", queue_id: queueId, recipients: accepted, rejected },
+      note: "The server now owns the message and will deliver it to the mailbox."
+    });
+    command("QUIT", "QUIT", [], { phase: "Closing the session", log: "QUIT", note: "QUIT ends the SMTP session politely." });
+    reply("221", ["2.0.0 Bye"], "Bye", { phase: "Session closed", log: "Server says goodbye (221)" });
+    tcpClose(tr, "mail", cport, mxIp, port);
+    return tr.toObject("mail", title, intro, { mx: mxHost, ip: mxIp, starttls, accepted, rejected });
+  }
+
+  // src/js/hls.js
+  var STREAM_HOST = "cdn.streamly.example";
+  var SEGMENT_SECONDS = 4;
+  var TOTAL_SEGMENTS = 12;
+  var INITIAL_BURST = 3;
+  var RENDITIONS = {
+    "360p": { res: "640x360", bps: 8e5, codecs: "avc1.42e01e,mp4a.40.2" },
+    "480p": { res: "854x480", bps: 14e5, codecs: "avc1.4d401f,mp4a.40.2" },
+    "720p": { res: "1280x720", bps: 28e5, codecs: "avc1.4d401f,mp4a.40.2" },
+    "1080p": { res: "1920x1080", bps: 5e6, codecs: "avc1.640028,mp4a.40.2" }
+  };
+  var ORDER = Object.keys(RENDITIONS);
+  var BANDWIDTH_MBPS = [7, 6.5, 6, 3, 1.6, 1.2, 1.4, 2.6, 4.2, 6, 7, 7];
+  var bandwidthAt = (i) => BANDWIDTH_MBPS[Math.min(i, BANDWIDTH_MBPS.length - 1)];
+  function masterPlaylist() {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3"];
+    for (const name of ORDER) {
+      const r = RENDITIONS[name];
+      lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${r.bps},RESOLUTION=${r.res},CODECS="${r.codecs}"`, `${name}/index.m3u8`);
+    }
+    return lines.join("\n") + "\n";
+  }
+  function mediaPlaylist() {
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3", `#EXT-X-TARGETDURATION:${SEGMENT_SECONDS}`, "#EXT-X-MEDIA-SEQUENCE:0", "#EXT-X-PLAYLIST-TYPE:VOD"];
+    for (let i = 0; i < TOTAL_SEGMENTS; i++) lines.push(`#EXTINF:${SEGMENT_SECONDS}.000,`, `seg_${String(i).padStart(3, "0")}.ts`);
+    lines.push("#EXT-X-ENDLIST");
+    return lines.join("\n") + "\n";
+  }
+  function pickQuality(requested, index) {
+    if (requested !== "auto") return requested;
+    if (index === 0) return "480p";
+    const budget = bandwidthAt(index - 1) * 0.8 * 1e6;
+    let best = ORDER[0];
+    for (const name of ORDER) if (RENDITIONS[name].bps <= budget) best = name;
+    return best;
+  }
+  function segmentSize(quality, index) {
+    const jitter = 0.9 + hash32(`${quality}:${index}`) % 256 / 255 * 0.2;
+    return Math.floor(RENDITIONS[quality].bps / 8 * SEGMENT_SECONDS * jitter);
+  }
+  var actors = () => [
+    { id: "client", label: "Video player", sub: CLIENT_IP },
+    { id: "dns", label: "DNS resolver", sub: RESOLVER_IP },
+    { id: "cdn", label: STREAM_HOST, sub: simIp(STREAM_HOST), sub_hidden: true }
+  ];
+  function get(tr, target, ctype, o) {
+    const streamSession = o.tcpSession || tr.streamTcpSession;
+    const req = `GET ${target} HTTP/1.1
+Host: ${STREAM_HOST}
+User-Agent: ${USER_AGENT}
+Accept: ${o.accept || "*/*"}
+Accept-Encoding: identity
+Connection: keep-alive
+`;
+    tcpDataSegment(tr, streamSession, "c2s", byteLength(req), `HTTP request segment: ${target}`, {
+      log: `TCP carries stream request (${byteLength(req)} bytes)`
+    });
+    tr.emit({
+      kind: "http_request",
+      protocol: "HTTP",
+      direction: "c2s",
+      from: "client",
+      to: "cdn",
+      summary: `GET ${target.split("/").pop()}`,
+      raw: req,
+      highlights: [
+        hl(req, "GET", "Method: fetch a file", "key"),
+        hl(req, target, "The playlist or segment being requested", "val"),
+        hl(req, `Host: ${STREAM_HOST}`, "Host header: which site on this server", "key")
+      ],
+      transport: "TLS/443",
+      phase: "Requesting stream data",
+      log: o.logReq,
+      note: o.noteReq || "",
+      tag: "HLS"
+    });
+    tcpAck(tr, streamSession, "s2c", "ACK (stream request)");
+    tr.wait(tr.rng.uniform(3, 12));
+    const isText = o.text != null;
+    const size = isText ? byteLength(o.text) : o.size;
+    const head = ["HTTP/1.1 200 OK", `Date: ${httpDate()}`, `Server: ${SERVER_TOKEN}`, `Content-Type: ${ctype}`, `Content-Length: ${size}`];
+    if (isText) head.push("Cache-Control: no-cache");
+    else head.push("Accept-Ranges: bytes", "Cache-Control: public, max-age=31536000");
+    head.push("Connection: keep-alive");
+    const shown = isText ? o.text : `[binary MPEG-TS video data: ${size.toLocaleString("en-US")} bytes, not shown]`;
+    const resp = head.join("\n") + "\n\n" + shown;
+    const marks = [
+      hl(resp, "200 OK", "The file was found", "ok"),
+      hl(resp, `Content-Type: ${ctype}`, "Media type: tells the player what the payload is", "val"),
+      hl(resp, `Content-Length: ${size}`, "Size in bytes", "key"),
+      ...o.extraMarks ? o.extraMarks(resp) : []
+    ];
+    const transferMs = o.transferMs !== void 0 ? o.transferMs : size * 8 / 2e4;
+    tcpDataSegment(tr, streamSession, "s2c", size, `HTTP media response segment: ${target}`, {
+      log: `TCP carries ${ctype} response (${size} bytes)`,
+      note: "Each HLS manifest or media file is delivered as bytes over the established TCP connection."
+    });
+    tcpAck(tr, streamSession, "c2s", "ACK (stream response)");
+    tr.emit({
+      kind: "http_response",
+      protocol: "HTTP",
+      direction: "s2c",
+      from: "cdn",
+      to: "client",
+      summary: "200 OK",
+      raw: resp,
+      highlights: marks,
+      transport: "TLS/443",
+      phase: "Receiving stream data",
+      log: o.logResp,
+      note: o.noteResp || "",
+      tag: "HLS",
+      ui: o.ui,
+      advance: tr.jitter(tr.delay.cdn) + transferMs
+    });
+  }
+  function fetchMediaPlaylist(tr, quality, switchFrom = null) {
+    let noteReq, logReq, noteResp, ui;
+    if (switchFrom) {
+      noteReq = `The player decided to change rendition (${switchFrom} to ${quality}), so it fetches that rendition's playlist.`;
+      logReq = `Switching quality ${switchFrom} to ${quality}: requesting its playlist`;
+      noteResp = "Segments keep the same numbering in every rendition, so playback continues where it left off.";
+      ui = { switch: { from: switchFrom, to: quality } };
+    } else {
+      noteReq = "The media playlist lists every segment of one rendition, in playback order.";
+      logReq = `Requesting the ${quality} playlist`;
+      noteResp = "#EXTINF gives each segment's length in seconds. #EXT-X-ENDLIST marks a finished (on-demand) video.";
+      ui = { manifest: "media", quality };
+    }
+    get(tr, `/videos/demo/${quality}/index.m3u8`, "application/vnd.apple.mpegurl", {
+      text: mediaPlaylist(),
+      accept: "application/vnd.apple.mpegurl,*/*",
+      logReq,
+      logResp: `${quality} playlist received (${TOTAL_SEGMENTS} segments)`,
+      noteReq,
+      noteResp,
+      ui,
+      extraMarks: (resp) => [
+        hl(resp, `#EXT-X-TARGETDURATION:${SEGMENT_SECONDS}`, "Maximum segment length in seconds", "key"),
+        hl(resp, "#EXT-X-ENDLIST", "No more segments will be added: this is a finished video", "val")
+      ]
+    });
+  }
+  function fetchSegment(tr, quality, index, auto) {
+    const size = segmentSize(quality, index);
+    const mbps = bandwidthAt(index);
+    const dlMs = size * 8 / (mbps * 1e3);
+    const dlS = dlMs / 1e3;
+    let verdict = dlS > SEGMENT_SECONDS ? `Downloading ${SEGMENT_SECONDS} s of video took ${dlS.toFixed(1)} s, slower than real time, so the buffer is shrinking.` : `Downloading ${SEGMENT_SECONDS} s of video took ${dlS.toFixed(1)} s, faster than real time, so the buffer grows.`;
+    if (auto) verdict += " Auto quality uses this measurement to choose the next rendition.";
+    get(tr, `/videos/demo/${quality}/seg_${String(index).padStart(3, "0")}.ts`, "video/MP2T", {
+      size,
+      accept: "video/MP2T,*/*",
+      logReq: `Requesting segment ${index + 1} of ${TOTAL_SEGMENTS} (${quality})`,
+      logResp: `Segment ${index + 1} received (${(size / 1e6).toFixed(2)} MB, ${quality})`,
+      noteReq: "Each segment is an ordinary file downloaded with a normal GET. There is no special streaming protocol.",
+      noteResp: verdict,
+      ui: { segment: { index, quality, duration: SEGMENT_SECONDS, bytes: size, mbps } },
+      transferMs: dlMs
+    });
+  }
+  function buildStreamStart(quality) {
+    const tr = new Trace(actors(), `stream:start:${quality}`);
+    const intro = `Play the demo video (${quality === "auto" ? "auto quality" : quality})`;
+    resolveA(tr, STREAM_HOST, { reveal: "cdn" });
+    const streamCport = newClientPort(tr);
+    tcpOpen(tr, "cdn", streamCport, simIp(STREAM_HOST), 443);
+    tr.streamTcpSession = getTcpSession(tr, streamCport, simIp(STREAM_HOST), 443);
+    tlsHandshake(tr, "cdn", STREAM_HOST, "http/1.1");
+    get(tr, "/videos/demo/master.m3u8", "application/vnd.apple.mpegurl", {
+      text: masterPlaylist(),
+      accept: "application/vnd.apple.mpegurl,*/*",
+      logReq: "Requesting the master playlist",
+      logResp: "Master playlist received (4 renditions)",
+      noteReq: "The master playlist is the entry point. It lists the same video at several qualities.",
+      noteResp: "Each #EXT-X-STREAM-INF line describes one rendition: its bitrate, resolution and playlist location.",
+      ui: { manifest: "master" },
+      extraMarks: (resp) => [
+        hl(resp, "#EXT-X-STREAM-INF", "One variant stream (rendition) of the video", "key"),
+        hl(resp, "BANDWIDTH=800000", "Average bitrate in bits per second", "val"),
+        hl(resp, "RESOLUTION=640x360", "Picture size of this rendition", "val")
+      ]
+    });
+    const current = pickQuality(quality, 0);
+    tr.emit({
+      kind: "note",
+      protocol: "HTTP",
+      direction: "internal",
+      from: "client",
+      summary: `Player picks ${current}`,
+      raw: quality === "auto" ? "Auto starts with a middle rendition, then adapts to the measured download speed." : `The viewer picked ${current} manually.`,
+      phase: "Choosing a rendition",
+      log: `Starting at ${current}`,
+      note: "This choice (adaptive bitrate) happens entirely inside the player."
+    });
+    fetchMediaPlaylist(tr, current);
+    for (let i = 0; i < INITIAL_BURST; i++) fetchSegment(tr, current, i, quality === "auto");
+    return tr.toObject("stream", "Streaming the demo video", intro, {
+      host: STREAM_HOST,
+      state: {
+        quality: current,
+        next_index: INITIAL_BURST,
+        total: TOTAL_SEGMENTS,
+        ended: false,
+        tcp: tr.streamTcpSession ? { ...tr.streamTcpSession } : null
+      }
+    });
+  }
+  function buildStreamSegments(currentQuality, requestedQuality, nextIndex, count, tMs = 0, tcpState = null) {
+    const tr = new Trace(actors(), `stream:${nextIndex}:${requestedQuality}`, tMs);
+    if (tcpState) {
+      tr.streamTcpSession = { ...tcpState };
+      tr.tcpSessions.set(tr.streamTcpSession.key, tr.streamTcpSession);
+    }
+    let current = currentQuality;
+    const end = Math.min(nextIndex + count, TOTAL_SEGMENTS);
+    for (let index = nextIndex; index < end; index++) {
+      const wanted = pickQuality(requestedQuality, index);
+      if (wanted !== current) {
+        fetchMediaPlaylist(tr, wanted, current);
+        current = wanted;
+      }
+      fetchSegment(tr, current, index, requestedQuality === "auto");
+    }
+    const ended = end >= TOTAL_SEGMENTS;
+    if (ended && end > nextIndex) {
+      if (tr.streamTcpSession) {
+        tcpClose(tr, "cdn", tr.streamTcpSession.cport, tr.streamTcpSession.sip, tr.streamTcpSession.sport);
+        tr.streamTcpSession = null;
+      }
+      tr.emit({
+        kind: "note",
+        protocol: "HTTP",
+        direction: "internal",
+        from: "client",
+        summary: "All segments downloaded",
+        raw: `All ${TOTAL_SEGMENTS} segments are on the player. It stops requesting and plays out the buffer.`,
+        phase: "Download complete",
+        log: "Every segment has been downloaded",
+        note: "Because the playlist ends with #EXT-X-ENDLIST the player knows there is nothing more to fetch.",
+        ui: { streamEnd: true }
+      });
+    }
+    return tr.toObject("stream", "Streaming the demo video", "Fetch more segments", {
+      state: {
+        quality: current,
+        next_index: end,
+        total: TOTAL_SEGMENTS,
+        ended,
+        tcp: tr.streamTcpSession ? { ...tr.streamTcpSession } : null
+      }
+    });
+  }
+
+  // src/js/util.js
+  var $ = (sel, root = document) => root.querySelector(sel);
+  var $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (value === null || value === void 0 || value === false) continue;
+      if (key === "class") node.className = value;
+      else if (key === "text") node.textContent = value;
+      else node.setAttribute(key, value === true ? "" : value);
+    }
+    for (const child of children.flat()) {
+      if (child === null || child === void 0 || child === false) continue;
+      node.append(child.nodeType ? child : document.createTextNode(String(child)));
+    }
+    return node;
+  }
+  var protocolClass = (protocol) => "p-" + String(protocol || "tcp").toLowerCase();
+  function fmtMs(ms) {
+    if (ms < 1e3) return `${Math.round(ms)} ms`;
+    return `${(ms / 1e3).toFixed(2)} s`;
+  }
+  function fmtClock(seconds) {
+    const s = Math.max(0, Math.floor(seconds));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }
+  var reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var toastTimer = null;
+  function toast(message, { error = false } = {}) {
+    const host = document.getElementById("toasts");
+    if (!host) return;
+    host.replaceChildren(el("div", { class: "toast" + (error ? " is-error" : ""), role: "status" }, message));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => host.replaceChildren(), 3200);
+  }
+  function safeStorage() {
+    return {
+      get(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      },
+      set(key, value) {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+        }
+      }
+    };
+  }
+
+  // src/js/activities.js
+  function initSegmentedControls() {
+    $$("[data-seg]").forEach((group) => {
+      group.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        group.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+      });
+    });
+  }
+  var segValue = (name) => $(`[data-seg="${name}"] [aria-pressed="true"]`).dataset.value;
+  function showError(box, field, message) {
+    box.textContent = message || "";
+    field?.classList.toggle("has-error", !!message);
+  }
+  var Activity = class {
+    constructor(key, idleMessage) {
+      this.key = key;
+      this.idleMessage = idleMessage;
+      this.player = new Player();
+      this.trace = null;
+      this.onStarted = () => {
+      };
+      this.status = $(`#${key}-status`);
+      this.logList = $(`#${key}-log`);
+      ["load", "reindex", "append", "change", "state"].forEach((name) => this.player.on(name, () => this.sync()));
+    }
+    load(trace) {
+      this.trace = trace;
+      this.player.load(trace.events, { meta: { title: trace.title, intro: trace.intro, actors: trace.actors } });
+      this.onStarted();
+    }
+    /** Events the player has already reached (in trace order, hidden ones included). */
+    seen() {
+      return this.player.all.slice(0, this.player.allIndex + 1);
+    }
+    /** Subclasses can report a final outcome: { state: "done" | "error", title, detail }. */
+    outcome() {
+      return null;
+    }
+    sync() {
+      this.renderStatus();
+      this.renderLog();
+      this.renderView();
+    }
+    renderStatus() {
+      const p = this.player;
+      const box = this.status;
+      const [dot, text, step] = [box.children[0], box.children[1], box.children[2]];
+      if (!this.trace) {
+        box.className = "status gap-top";
+        text.replaceChildren(el("strong", { text: "Ready" }), el("span", { text: this.idleMessage }));
+        step.textContent = "";
+        return;
+      }
+      const ev = p.event;
+      const out = this.outcome();
+      let cls = "status gap-top";
+      let title;
+      let detail;
+      if (!ev) {
+        title = "Starting";
+        detail = this.trace.intro;
+      } else {
+        cls += ` ${protocolClass(ev.protocol)}`;
+        title = ev.phase || "Working";
+        detail = ev.log || ev.summary;
+      }
+      if (out) {
+        cls = `status gap-top is-${out.state}`;
+        title = out.title;
+        detail = out.detail;
+      } else if (p.playing) {
+        cls += " is-live";
+      }
+      box.className = cls;
+      text.replaceChildren(el("strong", { text: title }), el("span", { text: detail }));
+      step.textContent = `${Math.max(p.pos + 1, 0)}/${p.length}`;
+      void dot;
+    }
+    renderLog() {
+      const list = this.logList;
+      if (!this.trace) {
+        list.replaceChildren(el("li", { class: "log-empty", text: "Nothing yet." }));
+        return;
+      }
+      const rows = [el("li", {}, el("span", { class: "log-t", text: "0 ms" }), el("span", { class: "log-p", text: "You" }), el("span", { text: this.trace.intro }))];
+      for (const ev of this.seen()) {
+        if (!ev.log) continue;
+        rows.push(
+          el(
+            "li",
+            { class: protocolClass(ev.protocol) },
+            el("span", { class: "log-t", text: fmtMs(ev.t_ms) }),
+            el("span", { class: "log-p", text: ev.protocol }),
+            el("span", { text: ev.log })
+          )
+        );
+      }
+      list.replaceChildren(...rows);
+      list.scrollTop = list.scrollHeight;
+    }
+    renderView() {
+    }
+    /** Called when the person switches to another tab. */
+    leave() {
+      this.player.pause();
+    }
+  };
+  var BrowseActivity = class extends Activity {
+    constructor() {
+      super("browse", "Press Visit to load a page.");
+      this.form = $("#browse-form");
+      this.input = $("#browse-url");
+      this.errorBox = $("#browse-error");
+      this.typedUrl = "";
+      this.viewUrl = $("#browse-view-url");
+      this.viewBody = $("#browse-view-body");
+      this.form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.visit();
+      });
+      this.input.addEventListener("input", () => showError(this.errorBox, $("#browse-field"), ""));
+      $$("#pane-browse .chip").forEach((chip) => chip.addEventListener("click", () => {
+        this.input.value = chip.dataset.url;
+        this.visit();
+      }));
+      $("#dns-flush").addEventListener("click", () => {
+        flushDnsCache();
+        toast("DNS cache cleared.");
+      });
+      this.sync();
+    }
+    visit() {
+      try {
+        const parsed = parseUrl(this.input.value);
+        const trace = buildBrowseTrace(this.input.value, {
+          persistent: segValue("browse-conn") === "persistent",
+          scenario: segValue("browse-scenario"),
+          loadResources: $("#browse-resources").checked,
+          useCache: $("#browse-cache").checked
+        });
+        this.typedUrl = parsed.url;
+        showError(this.errorBox, $("#browse-field"), "");
+        this.load(trace);
+      } catch (error) {
+        if (!(error instanceof UserError)) throw error;
+        showError(this.errorBox, $("#browse-field"), error.message);
+        toast(error.message, { error: true });
+      }
+    }
+    outcome() {
+      const seen = this.seen();
+      const failed = seen.find((e) => e.ui.result === "error");
+      if (failed) return { state: "error", title: "Could not connect", detail: failed.ui.message };
+      const page = seen.find((e) => e.ui.result === "page");
+      if (page && this.player.atEnd) {
+        const bad = page.ui.status >= 400;
+        return { state: bad ? "error" : "done", title: bad ? `${page.ui.status} ${page.ui.reason}` : "Page loaded", detail: page.ui.url };
+      }
+      return null;
+    }
+    renderView() {
+      const seen = this.seen();
+      let url = this.typedUrl;
+      for (const ev of seen) {
+        if (ev.ui.redirect) url = ev.ui.redirect;
+        if (ev.ui.result) url = ev.ui.url;
+      }
+      this.viewUrl.textContent = this.trace ? url : "about:blank";
+      const bar = this.viewUrl.previousElementSibling;
+      bar.innerHTML = icon(url.startsWith("https") ? "lock" : "globe");
+      const body = this.viewBody;
+      if (!this.trace) {
+        body.replaceChildren(el("p", { class: "placeholder", text: "The page appears here once the server's response arrives." }));
+        return;
+      }
+      const result = seen.find((e) => e.ui.result);
+      const redirect = seen.find((e) => e.ui.redirect);
+      if (!result) {
+        body.replaceChildren(
+          el("div", { class: "skeleton", style: "width:55%;height:22px" }),
+          el("div", { class: "skeleton", style: "width:90%" }),
+          el("div", { class: "skeleton", style: "width:70%" }),
+          el("p", { class: "placeholder", text: redirect ? `Moved. Following the redirect to ${redirect.ui.redirect}` : "Waiting for the server..." })
+        );
+        return;
+      }
+      const r = result.ui;
+      if (r.result === "error") {
+        body.replaceChildren(el("h3", { text: r.title }), el("p", { text: r.message }), el("div", { class: "tag-row" }, el("span", { class: "tag is-err", text: "DNS lookup failed" })));
+        return;
+      }
+      const planned = this.trace.events.filter((e) => e.ui.resource).map((e) => e.ui.resource);
+      const got = new Set(seen.filter((e) => e.ui.resource).map((e) => e.ui.resource.path));
+      const tags = [el("span", { class: `tag ${r.status < 400 ? "is-ok" : "is-err"}`, text: `${r.status} ${r.reason}` })];
+      for (const res of planned) tags.push(el("span", { class: `tag ${got.has(res.path) ? "is-ok" : "is-wait"}`, text: res.path.split("/").pop() }));
+      body.replaceChildren(el("h3", { text: r.heading }), el("p", { text: r.text }), el("div", { class: "tag-row" }, tags));
+    }
+  };
+  var MailActivity = class extends Activity {
+    constructor() {
+      super("mail", "Write a message and press Send.");
+      this.form = $("#mail-form");
+      this.errorBox = $("#mail-error");
+      this.view = $("#mail-view");
+      this.sent = null;
+      this.form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        this.send();
+      });
+      this.form.addEventListener("input", () => showError(this.errorBox, null, ""));
+      this.sync();
+    }
+    send() {
+      const values = { from: $("#mail-from").value, to: $("#mail-to").value, subject: $("#mail-subject").value, body: $("#mail-body").value };
+      try {
+        const trace = buildMailTrace(values.from, values.to, values.subject, values.body, {
+          starttls: $("#mail-starttls").checked,
+          serverMode: segValue("mail-mode")
+        });
+        this.sent = values;
+        showError(this.errorBox, null, "");
+        this.load(trace);
+      } catch (error) {
+        if (!(error instanceof UserError)) throw error;
+        showError(this.errorBox, null, error.message);
+        toast(error.message, { error: true });
+      }
+    }
+    outcome() {
+      const done = this.seen().find((e) => e.ui.result);
+      if (!done) return null;
+      const u = done.ui;
+      if (u.result === "delivered") return { state: "done", title: "Message accepted", detail: `Queued as ${u.queue_id}` };
+      if (u.result === "partial") return { state: "done", title: "Partly accepted", detail: `${u.recipients.length} accepted, ${u.rejected.length} rejected` };
+      return { state: "error", title: "Message rejected", detail: `${u.code}: ${u.message}` };
+    }
+    renderView() {
+      if (!this.sent) {
+        this.view.replaceChildren(el("div", { class: "browser-body" }, el("p", { class: "placeholder", text: "The message you send appears here, with the server's verdict." })));
+        return;
+      }
+      const s = this.sent;
+      const out = this.outcome();
+      const started = this.player.pos >= 0;
+      let stamp = el("span", { class: "stamp", text: "Not sent yet" });
+      if (out) stamp = el("span", { class: `stamp ${out.state === "done" ? "is-ok" : "is-err"}`, text: out.state === "done" ? out.detail : out.title });
+      else if (started) stamp = el("span", { class: "stamp is-live", text: "Sending..." });
+      this.view.replaceChildren(
+        el(
+          "div",
+          { class: "mail-card" },
+          el(
+            "dl",
+            { class: "mail-lines" },
+            el("dt", { text: "From" }),
+            el("dd", { text: s.from }),
+            el("dt", { text: "To" }),
+            el("dd", { text: s.to }),
+            el("dt", { text: "Subject" }),
+            el("dd", { text: s.subject || "(no subject)" })
+          ),
+          stamp
+        )
+      );
+    }
+  };
+  var StreamActivity = class extends Activity {
+    constructor() {
+      super("stream", "Press Play to request the video.");
+      this.session = null;
+      this.playhead = 0;
+      this.received = 0;
+      this.duration = TOTAL_SEGMENTS * SEGMENT_SECONDS;
+      this.playBtn = $("#stream-play");
+      this.playLabel = $("#stream-play-label");
+      this.select = $("#stream-quality");
+      this.screen = $("#video-screen");
+      this.playBtn.addEventListener("click", () => this.onPlayClick());
+      this.select.addEventListener("change", () => this.onQualityChange());
+      this.player.on("nearEnd", () => this.fetchMore());
+      this.timer = setInterval(() => this.tick(), 250);
+      this.sync();
+    }
+    onPlayClick() {
+      const s = this.session;
+      if (!s || this.finished()) this.start();
+      else if (s.playing) this.pauseVideo();
+      else this.resumeVideo();
+    }
+    start() {
+      const requested = this.select.value;
+      const trace = buildStreamStart(requested);
+      const state = trace.meta.state;
+      this.session = {
+        playing: true,
+        requested,
+        current: state.quality,
+        nextIndex: state.next_index,
+        ended: false,
+        tcp: state.tcp
+      };
+      this.playhead = 0;
+      this.load(trace);
+    }
+    pauseVideo() {
+      this.session.playing = false;
+      this.sync();
+    }
+    resumeVideo() {
+      this.session.playing = true;
+      this.fetchMore();
+      if (!this.player.playing) this.player.play({ restart: false });
+      this.sync();
+    }
+    onQualityChange() {
+      const s = this.session;
+      if (!s) return;
+      s.requested = this.select.value;
+      toast(s.requested === "auto" ? "Auto quality: the player will adapt to your connection." : `Quality set to ${s.requested}. It applies from the next segment request.`);
+    }
+    /** When the timeline is about to run out and the video is playing, download the next segments. */
+    fetchMore() {
+      const s = this.session;
+      if (!s || !s.playing || s.ended) return;
+      const last = this.player.all[this.player.all.length - 1];
+      const trace = buildStreamSegments(
+        s.current,
+        s.requested,
+        s.nextIndex,
+        2,
+        last.t_ms + 2e3,
+        s.tcp
+      );
+      const state = trace.meta.state;
+      s.current = state.quality;
+      s.nextIndex = state.next_index;
+      s.ended = state.ended;
+      s.tcp = state.tcp;
+      if (!trace.events.length) return;
+      this.player.append(trace.events);
+      if (!this.player.playing) this.player.play({ restart: false });
+    }
+    finished() {
+      return !!this.session && this.playhead >= this.duration - 0.01;
+    }
+    tick() {
+      const s = this.session;
+      if (!s || !s.playing) return;
+      if (this.playhead < this.received * SEGMENT_SECONDS) {
+        this.playhead = Math.min(this.duration, this.playhead + 0.25);
+        if (this.finished()) s.playing = false;
+        this.renderVideo();
+        this.renderPlayButton();
+      }
+    }
+    outcome() {
+      if (this.finished()) return { state: "done", title: "Finished", detail: "The whole video was played." };
+      return null;
+    }
+    sync() {
+      const seen = this.seen();
+      this.received = seen.filter((e) => e.ui.segment).length;
+      this.lastQuality = [...seen].reverse().find((e) => e.ui.segment)?.ui.segment.quality || null;
+      this.playhead = Math.min(this.playhead, this.received * SEGMENT_SECONDS);
+      super.sync();
+    }
+    renderView() {
+      this.renderVideo();
+      this.renderPlayButton();
+    }
+    renderPlayButton() {
+      const s = this.session;
+      const playing = !!s && s.playing;
+      this.playBtn.querySelector("[data-icon]").innerHTML = icon(playing ? "pause" : "play");
+      this.playLabel.textContent = this.finished() ? "Play again" : playing ? "Pause" : s ? "Resume" : "Play";
+    }
+    renderVideo() {
+      const s = this.session;
+      const buffered = this.received * SEGMENT_SECONDS;
+      let mode = "idle";
+      let text = "Press Play to start";
+      if (s) {
+        if (this.finished()) {
+          mode = "paused";
+          text = "Finished";
+        } else if (!s.playing) {
+          mode = "paused";
+          text = "Paused";
+        } else if (this.received === 0) {
+          mode = "buffering";
+          text = "Connecting...";
+        } else if (this.playhead >= buffered && !s.ended) {
+          mode = "buffering";
+          text = "Buffering...";
+        } else {
+          mode = "playing";
+          text = "Playing";
+        }
+      }
+      this.screen.className = `video-screen is-${mode}`;
+      $("#video-status").textContent = text;
+      const quality = this.lastQuality || (s ? s.current : null);
+      $("#video-quality").textContent = quality ? s && s.requested === "auto" ? `${quality} auto` : quality : "no signal";
+      $("#video-time").textContent = `${fmtClock(this.playhead)} / ${fmtClock(this.duration)}`;
+      $("#video-buffer-text").textContent = `buffer ${Math.max(0, Math.round(buffered - this.playhead))} s`;
+      $("#video-buffer").style.width = `${buffered / this.duration * 100}%`;
+      $("#video-played").style.width = `${this.playhead / this.duration * 100}%`;
+    }
+    leave() {
+      super.leave();
+      if (this.session) this.session.playing = false;
+      this.sync();
+    }
+  };
+
+  // src/js/visualizer.js
+  var SPEEDS = [1, 2, 4, 0.5];
+  var Visualizer = class {
+    constructor() {
+      this.r = {
+        empty: $("#viz-empty"),
+        seqWrap: $("#seq-wrap"),
+        lanes: $("#seq-lanes"),
+        body: $("#seq-body"),
+        inspector: $("#inspector"),
+        title: $("#insp-title"),
+        step: $("#insp-step"),
+        badges: $("#insp-badges"),
+        raw: $("#insp-raw"),
+        fields: $("#insp-fields"),
+        note: $("#insp-note"),
+        stats: $("#viz-stats"),
+        scrub: $("#scrub"),
+        count: $("#step-count"),
+        play: $("#btn-play"),
+        prev: $("#btn-prev"),
+        next: $("#btn-next"),
+        replay: $("#btn-replay"),
+        speed: $("#btn-speed"),
+        playbar: $("#playbar")
+      };
+      this.player = null;
+      this.unsubs = [];
+      this.actors = [];
+      this.lastPos = -1;
+      this.speed = 1;
+      this.viewMode = "application";
+      this.bindControls();
+      this.renderAll();
+    }
+    // ---- wiring ---------------------------------------------------------
+    bindControls() {
+      const { play, prev, next, replay, speed, scrub } = this.r;
+      play.addEventListener("click", () => this.player?.toggle());
+      prev.addEventListener("click", () => this.player?.prev());
+      next.addEventListener("click", () => this.player?.next());
+      replay.addEventListener("click", () => this.player?.replay());
+      scrub.addEventListener("input", () => this.player?.goTo(Number(scrub.value)));
+      speed.addEventListener("click", () => {
+        this.setSpeed(SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length]);
+      });
+    }
+    setSpeed(value) {
+      this.speed = value;
+      this.r.speed.textContent = `${value}x`;
+      this.player?.setSpeed(value);
+    }
+    updateViewMode(mode) {
+      this.viewMode = mode;
+      this.renderAll();
+    }
+    /** Show a different player (each activity has its own timeline). */
+    bind(player) {
+      this.unsubs.forEach((off) => off());
+      this.player = player;
+      this.unsubs = [
+        player.on("load", () => this.renderAll()),
+        player.on("reindex", () => this.renderAll()),
+        player.on("append", () => {
+          this.updateControls();
+          this.updateStats();
+        }),
+        player.on("change", ({ jump }) => this.onChange(jump)),
+        player.on("state", () => this.updateControls())
+      ];
+      if (player.speed !== this.speed) player.speed = this.speed;
+      this.renderAll();
+    }
+    // ---- full and incremental rendering ---------------------------------
+    renderAll() {
+      const p = this.player;
+      const has = !!(p && p.meta && p.length);
+      this.r.empty.hidden = has;
+      this.r.seqWrap.hidden = !has;
+      this.r.inspector.hidden = !has;
+      this.r.playbar.hidden = !has;
+      if (!has) {
+        this.actors = [];
+        this.r.body.replaceChildren();
+        this.r.lanes.replaceChildren();
+        this.updateStats();
+        this.updateControls();
+        return;
+      }
+      this.actors = p.meta.actors;
+      this.renderLanes();
+      this.rebuildRows();
+      this.renderInspector(false);
+      this.updateStats();
+      this.updateControls();
+    }
+    onChange(jump) {
+      const p = this.player;
+      const pos = p.pos;
+      const sequential = !jump && pos === this.lastPos + 1 && pos >= 0;
+      if (sequential) this.appendRow(pos);
+      else this.rebuildRows();
+      this.renderInspector(sequential);
+      this.updateLaneReveals();
+      this.updateStats();
+      this.updateControls();
+    }
+    // ---- diagram --------------------------------------------------------
+    renderLanes() {
+      const n = this.actors.length;
+      this.r.lanes.style.setProperty("--n", n);
+      this.r.lanes.replaceChildren(
+        ...this.actors.map(
+          (a) => el("div", { class: "lane-head", "data-actor": a.id }, el("b", { text: a.label, title: a.label }), el("span", { text: a.sub }))
+        )
+      );
+      this.updateLaneReveals(true);
+    }
+    /** A server's IP stays "?" until the DNS answer that reveals it has been shown. */
+    updateLaneReveals(silent = false) {
+      const p = this.player;
+      if (!p || !this.actors.length) return;
+      const known = {};
+      for (let i = 0; i <= p.allIndex; i++) Object.assign(known, p.all[i].ui?.reveal || {});
+      this.actors.forEach((a, i) => {
+        const cell = this.r.lanes.children[i]?.querySelector("span");
+        if (!cell) return;
+        const shown = a.sub_hidden && !(a.id in known) ? "?" : a.sub;
+        if (cell.textContent !== shown) {
+          cell.textContent = shown;
+          if (!silent && shown !== "?") cell.classList.add("is-new");
+        }
+        cell.classList.toggle("is-unknown", shown === "?");
+      });
+    }
+    rebuildRows() {
+      const p = this.player;
+      const rows = [];
+      for (let i = 0; i <= p.pos; i++) rows.push(this.buildRow(p.eventAt(i), i));
+      this.r.body.replaceChildren(...this.laneLines(), ...rows);
+      this.markCurrent();
+      this.scrollToCurrent();
+      this.lastPos = p.pos;
+    }
+    appendRow(pos) {
+      const row = this.buildRow(this.player.eventAt(pos), pos);
+      row.classList.add("is-new");
+      this.r.body.querySelectorAll(".seq-row.is-new").forEach((r) => r.classList.remove("is-new"));
+      this.r.body.append(row);
+      this.markCurrent();
+      this.scrollToCurrent();
+      this.lastPos = pos;
+    }
+    laneLines() {
+      const n = this.actors.length;
+      return this.actors.map((_, i) => el("div", { class: "lane-line", style: `--x:${(i + 0.5) / n}` }));
+    }
+    markCurrent() {
+      const pos = this.player.pos;
+      this.r.body.querySelectorAll(".seq-row").forEach((row) => {
+        row.classList.toggle("is-current", Number(row.dataset.pos) === pos);
+      });
+    }
+    /** Keep the current row visible below the sticky lane header. */
+    scrollToCurrent() {
+      const wrap = this.r.seqWrap;
+      const row = this.r.body.querySelector(".seq-row.is-current");
+      if (!row) {
+        wrap.scrollTop = 0;
+        return;
+      }
+      const lanes = this.r.lanes.offsetHeight;
+      const rowTop = this.r.body.offsetTop + row.offsetTop;
+      const rowBottom = rowTop + row.offsetHeight;
+      if (rowBottom + 12 > wrap.scrollTop + wrap.clientHeight) wrap.scrollTop = rowBottom + 12 - wrap.clientHeight;
+      else if (rowTop < wrap.scrollTop + lanes) wrap.scrollTop = Math.max(0, rowTop - lanes - 8);
+    }
+    buildRow(ev, pos) {
+      const n = this.actors.length;
+      const idx = (id) => Math.max(0, this.actors.findIndex((a) => a.id === id));
+      const center = (i) => (i + 0.5) / n;
+      const name = (id) => this.actors[idx(id)]?.label || id;
+      const cls = ["seq-row", protocolClass(ev.protocol)];
+      if (ev.layer === "transport") cls.push("is-transport");
+      const row = el("div", {
+        class: cls.join(" "),
+        role: "button",
+        tabindex: "0",
+        "data-pos": pos,
+        "aria-label": `Step ${pos + 1}: ${ev.protocol}, ${ev.summary}`
+      });
+      const num = el("span", { class: "seq-num", text: pos + 1 });
+      if (ev.direction === "internal") {
+        row.classList.add("is-internal");
+        row.append(el("div", { class: "seq-note", style: `--x:${center(idx(ev.from))}` }, num, el("em", { text: ev.summary })));
+      } else {
+        const x1 = center(idx(ev.from));
+        const x2 = center(idx(ev.to));
+        const left = Math.min(x1, x2);
+        const width = Math.abs(x2 - x1);
+        const meta = el("div", { class: "seq-meta" }, ev.transport ? el("span", { text: ev.transport }) : null, el("span", { text: fmtMs(ev.t_ms) }));
+        row.append(
+          el("div", { class: "seq-label", style: `--mid:${(x1 + x2) / 2};--w:${width}` }, el("div", { class: "seq-text" }, num, el("em", { text: ev.summary })), meta),
+          el(
+            "div",
+            { class: `seq-arrow ${ev.direction}${ev.layer === "transport" ? " is-transport" : ""}`, style: `--l:${left};--w:${width}` },
+            el("span", { class: "seq-line" }),
+            el("span", { class: "seq-head" }),
+            el("span", { class: "seq-packet" })
+          )
+        );
+      }
+      row.title = `${name(ev.from)}${ev.direction === "internal" ? "" : " to " + name(ev.to)}`;
+      const go = () => this.player?.goTo(pos);
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          go();
+        }
+      });
+      return row;
+    }
+    // ---- inspector --------------------------------------------------------
+    renderInspector(animate) {
+      const p = this.player;
+      const ev = p.event;
+      const r = this.r;
+      if (!ev) {
+        r.inspector.className = "inspector p-tcp";
+        r.title.textContent = p.meta?.intro || "Ready";
+        r.step.textContent = `0 / ${p.length}`;
+        r.badges.replaceChildren();
+        r.raw.className = "raw";
+        r.raw.textContent = "Nothing has been sent yet. Press play, or step forward with the next button.";
+        r.fields.replaceChildren();
+        r.note.hidden = true;
+        return;
+      }
+      const actor = (id) => this.actors.find((a) => a.id === id)?.label || id;
+      r.inspector.className = `inspector ${protocolClass(ev.protocol)}`;
+      r.title.textContent = ev.summary;
+      r.step.textContent = `${p.pos + 1} / ${p.length}`;
+      const who = ev.direction === "internal" ? `Inside ${actor(ev.from)}` : `${actor(ev.from)} to ${actor(ev.to)}`;
+      r.badges.replaceChildren(
+        ...[
+          el("span", { class: "badge", text: ev.protocol }),
+          ev.tag ? el("span", { class: "badge plain", text: ev.tag }) : null,
+          el("span", { class: "badge plain", text: who }),
+          ev.transport ? el("span", { class: "badge plain", text: ev.transport }) : null,
+          el("span", { class: "badge plain", text: `at ${fmtMs(ev.t_ms)}` })
+        ].filter(Boolean)
+      );
+      renderRaw(r.raw, ev.raw, ev.highlights);
+      r.raw.className = "raw" + (animate ? " is-new" : "");
+      const seen = /* @__PURE__ */ new Set();
+      const items = [];
+      for (const h of ev.highlights) {
+        if (seen.has(h.label)) continue;
+        seen.add(h.label);
+        items.push(el("li", {}, el("mark", { class: `hl hl-${h.kind}` }, h.text), el("span", { text: h.label })));
+      }
+      const transportItems = [];
+      if (ev.layer === "transport") {
+        const rawText = ev.raw || "";
+        const getField = (re) => {
+          const m = rawText.match(re);
+          return m ? m[1] : null;
+        };
+        const fieldPairs = [];
+        const seq = getField(/Seq=(\d+)/);
+        const ack = getField(/Ack=(\d+)/);
+        const win = getField(/Win=(\d+)/);
+        const flags = getField(/Flags=([^\s]+)/);
+        const length = getField(/Length=(\d+)/);
+        const cwnd = getField(/CWND=(\d+)/);
+        if (seq !== null) fieldPairs.push(["Seq", seq]);
+        if (ack !== null) fieldPairs.push(["Ack", ack]);
+        if (win !== null) fieldPairs.push(["Win", win]);
+        if (flags !== null) fieldPairs.push(["Flags", flags.replaceAll(",", ", ")]);
+        if (length !== null) fieldPairs.push(["Length", `${length} B`]);
+        if (cwnd !== null) fieldPairs.push(["CWND", cwnd]);
+        fieldPairs.push(["Direction", ev.direction === "c2s" ? "Client → Server" : ev.direction === "s2c" ? "Server → Client" : "Internal"]);
+        transportItems.push(
+          el("h4", { text: "Transport fields" }),
+          el("div", { class: "transport-field-grid" },
+            ...fieldPairs.map(([label, value]) =>
+              el("div", { class: "transport-field" },
+                el("span", { text: label }),
+                el("strong", { text: value })
+              )
+            )
+          )
+        );
+      }
+      r.fields.replaceChildren(
+        ...(items.length ? [el("h4", { text: "Key fields" }), ...items] : []),
+        ...transportItems
+      );
+      r.note.hidden = !ev.note;
+      r.note.textContent = ev.note || "";
+    }
+    // ---- stats and controls ---------------------------------------------
+    updateStats() {
+      const p = this.player;
+      const box = this.r.stats;
+      if (!p || !p.meta || p.pos < 0) {
+        box.replaceChildren();
+        return;
+      }
+      const seen = p.all.slice(0, p.allIndex + 1);
+      const count = (kind) => seen.filter((e) => e.kind === kind).length;
+      const rows = [
+        ["DNS queries", count("dns_query")],
+        ["TCP connections", count("tcp_syn")],
+        ["TCP data segments", count("tcp_data")],
+        ["TCP ACKs", count("tcp_ack_data")],
+        ["UDP datagrams", count("udp_datagram")],
+        ["TLS handshakes", count("tls_client_hello")],
+        ["HTTP requests", count("http_request")],
+        ["SMTP commands", count("smtp_command")]
+      ].filter(([, n]) => n > 0);
+      const chips = rows.map(([label, n]) => el("span", { class: "stat" }, `${label} `, el("b", { text: n })));
+      chips.push(el("span", { class: "stat" }, "elapsed ", el("b", { text: fmtMs(p.event ? p.event.t_ms : 0) })));
+      box.replaceChildren(...chips);
+    }
+    updateControls() {
+      const p = this.player;
+      const r = this.r;
+      const len = p ? p.length : 0;
+      const playing = !!p?.playing;
+      r.play.innerHTML = icon(playing ? "pause" : "play");
+      r.play.setAttribute("aria-label", playing ? "Pause" : p?.atEnd ? "Play again" : "Play");
+      r.play.disabled = !len;
+      r.replay.disabled = !len;
+      r.prev.disabled = !len || p.pos < 0;
+      r.next.disabled = !len || p.atEnd;
+      r.scrub.disabled = !len;
+      r.scrub.max = String(Math.max(0, len - 1));
+      r.scrub.value = String(Math.max(0, p ? p.pos : 0));
+      r.count.textContent = `${len ? p.pos + 1 : 0} / ${len}`;
+      r.speed.textContent = `${this.speed}x`;
+    }
+  };
+  function renderRaw(pre, raw, highlights = []) {
+    pre.replaceChildren();
+    const ranges = highlights.filter((h) => h.end > h.start).sort((a, b) => a.start - b.start);
+    let cursor = 0;
+    for (const h of ranges) {
+      if (h.start < cursor) continue;
+      if (h.start > cursor) pre.append(raw.slice(cursor, h.start));
+      const m = document.createElement("mark");
+      m.className = `hl hl-${h.kind}`;
+      m.title = h.label;
+      m.textContent = raw.slice(h.start, h.end);
+      pre.append(m);
+      cursor = h.end;
+    }
+    if (cursor < raw.length) pre.append(raw.slice(cursor));
+  }
+
+  // src/js/main.js
+  var storage = safeStorage();
+  function start() {
+    hydrateIcons();
+    initSegmentedControls();
+    const viz = new Visualizer();
+    const activities = { browse: new BrowseActivity(), mail: new MailActivity(), stream: new StreamActivity() };
+    let current = "browse";
+    viz.bind(activities.browse.player);
+    const stacked = () => typeof matchMedia === "function" && matchMedia("(max-width: 1023.98px)").matches;
+    const behavior = () => reducedMotion() ? "auto" : "smooth";
+    Object.values(activities).forEach((a) => {
+      a.onStarted = () => {
+        if (stacked()) requestAnimationFrame(() => $("#viz-panel").scrollIntoView({ behavior: behavior(), block: "start" }));
+      };
+    });
+    $("#jump-activity").addEventListener("click", () => {
+      $("#activity-panel").scrollIntoView({ behavior: behavior(), block: "start" });
+    });
+    const tabs = $$(".tab");
+    function select(key, focus = false) {
+      if (key === current && $(`#tab-${key}`).getAttribute("aria-selected") === "true") return;
+      activities[current].leave();
+      current = key;
+      tabs.forEach((tab) => {
+        const on = tab.dataset.tab === key;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+        if (on && focus) tab.focus();
+      });
+      $$(".pane").forEach((pane) => {
+        pane.hidden = pane.dataset.pane !== key;
+      });
+      viz.bind(activities[key].player);
+      activities[key].player.setFilter((e) => vizMode === "application"
+        ? e.layer !== "transport" && ["DNS", "HTTP", "SMTP"].includes(e.protocol)
+        : e.layer === "transport");
+      activities[key].sync();
+      viz.updateViewMode(vizMode);
+    }
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => select(tab.dataset.tab));
+      tab.addEventListener("keydown", (e) => {
+        const move = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+        if (move) {
+          e.preventDefault();
+          select(tabs[(i + move + tabs.length) % tabs.length].dataset.tab, true);
+        }
+      });
+    });
+    // Assignment 2: both right-panel views share the same timeline.
+    // The filter changes only what is displayed, not the underlying activity trace.
+    const viewApp = $("#view-app");
+    const viewTransport = $("#view-transport");
+    let vizMode = "application";
+    activities.browse.player.setFilter((e) => e.layer !== "transport" && ["DNS", "HTTP", "SMTP"].includes(e.protocol));
+    viz.updateViewMode(vizMode);
+
+    const applyView = (mode) => {
+      vizMode = mode;
+      viewApp.setAttribute("aria-selected", String(mode === "application"));
+      viewTransport.setAttribute("aria-selected", String(mode === "transport"));
+
+      Object.values(activities).forEach((a) => {
+        a.player.setFilter((e) => mode === "application"
+          ? e.layer !== "transport" && ["DNS", "HTTP", "SMTP"].includes(e.protocol)
+          : e.layer === "transport");
+      });
+
+      viz.updateViewMode(mode);
+    };
+
+    viewApp.addEventListener("click", () => applyView("application"));
+    viewTransport.addEventListener("click", () => applyView("transport"));
+    const themeButton = $("#theme-toggle");
+    const paintThemeButton = () => {
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      themeButton.innerHTML = icon(dark ? "sun" : "moon");
+      themeButton.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+    };
+    themeButton.addEventListener("click", () => {
+      const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      storage.set("pv-theme", next);
+      paintThemeButton();
+    });
+    paintThemeButton();
+    document.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest?.("input, textarea, select, button, summary, a, [role='button'], [role='tab']")) return;
+      const player = activities[current].player;
+      if (e.key === " ") {
+        e.preventDefault();
+        player.toggle();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        player.next();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        player.prev();
+      }
+    });
+    window.protoviz = { activities, viz };
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();
+
+  </script>
+</body>
+</html>
